@@ -10,8 +10,10 @@ class Parser {
     vector< Vect > cam; 
     vector< double > perspect; 
     ifstream _in; 
-    ofstream _out;
+    ofstream _out, _out2;
     stack< Matrix > _stk; 
+    Matrix ViewTrans;
+    string OutDir; 
 
     Parser(string in, string out); 
     void _Translate(vector< double > amm);
@@ -23,12 +25,64 @@ class Parser {
     vector< double > _applyTransformation(vector< double > coord);
     void _drawTriangle(vector< vector< double >> coords); 
     void PrintCamAndPers();
+    void computeViewTransMatrix(); 
+    void ProcessStage2(string Outstage2, string in); 
 };
 
 
+void Parser::ProcessStage2(string Outstage2, string in) {
+    _out2.open(Outstage2);
+    if(!_out2.is_open()) {
+        cout << "No such output file for stage 2.\n";
+        exit(1);
+    }
+    _out2 << fixed << setprecision(7);
+    ifstream _in2(in);
+    if(!_in2.is_open()) {
+        cout << "No such input file for stage 2.\n";
+        exit(1);
+    }
+    string line;
+    while(getline(_in2, line)) {
+        if(line.empty()) {
+            _out2 << "\n"; 
+            continue; 
+        }
+        // cout << line << "\n"; 
+        istringstream iss(line);
+        vector< double > coords(3);
+        for(int i = 0 ; i < 3; ++i) {
+            iss >> coords[i];
+        }
+        coords.push_back(1.0); // Homogeneous coordinate
+        coords = ViewTrans.apply(coords);
+        for(int i =0 ;i < 3 ; ++i ) _out2 << coords[i] << " ";
+        _out2 << "\n"; 
+    }
+    _in2.close();
+    _out2.close(); 
+    return; 
+}
+
+
+void Parser::computeViewTransMatrix() {
+    //// cam[0] is the camera position, cam[1] is the look vector, cam[2] is the up vector
+    Vect _l = (cam[1] - cam[0]).normalize(); 
+    Vect _r =  (_l ^  cam[2]).normalize(); 
+    Vect _u = (_r ^ _l); 
+    _l = (_l * -1.0);
+    Matrix Translation, Rotation;
+    Translation.fillTranslation({-cam[0].x, -cam[0].y, -cam[0].z});
+    Rotation.createRotation({_r, _u, _l});
+    ViewTrans = Rotation * Translation;
+    return; 
+}
+
+
 Parser ::Parser(string in, string out) {
+    OutDir = out; 
     _in.open(in);
-    _out.open(out);
+    _out.open(out + "/stage1.txt");
     if(!_in.is_open()) {
         cout << "No such input file." << endl;
         exit(1);
@@ -46,6 +100,7 @@ Parser ::Parser(string in, string out) {
     for(int i = 0 ; i < 4; ++i) {
         _in >> perspect[i];
     }
+    computeViewTransMatrix(); 
 }
 
 void Parser::_Translate(vector< double > amm) {
@@ -177,4 +232,8 @@ void Parser::_Parse() {
             exit(1);
         }
     }
+    _in.close();
+    _out.close();
+    ProcessStage2(OutDir + "/stage2.txt", OutDir + "/stage1.txt"); 
+    return;
 }

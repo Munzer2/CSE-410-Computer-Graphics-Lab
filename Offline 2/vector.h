@@ -1,7 +1,7 @@
 #pragma once
 #include <bits/stdc++.h>
 #include <math.h>
-
+using namespace std;
 
 double DegToRad(double angle) {
     return angle * acos(-1) / 180.0;

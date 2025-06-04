@@ -1,5 +1,6 @@
 #pragma once
 #include<bits/stdc++.h>
+#include "vector.h"
 using namespace std;
 
 
@@ -14,9 +15,26 @@ class Matrix {
     void Ident();
     static Matrix getIdent(); 
     Matrix operator*(Matrix const & B) const; 
+    void fillTranslation(vector< double > trans);
+    void createRotation(vector< Vect > allAxis);
 };
 
+void Matrix::createRotation(vector< Vect > allAxis) {
+    Ident();
+    for(int i = 0 ; i < 3; ++i) {
+        _matrix[i][0] = allAxis[i].x;
+        _matrix[i][1] = allAxis[i].y;
+        _matrix[i][2] = allAxis[i].z;
+    }
+}
 
+void Matrix::fillTranslation(vector< double > trans) {
+    Ident();
+    for(int i = 0 ; i < 3; ++i) {
+        _matrix[i][3] = trans[i];
+    }
+    return;
+}
 
 vector< double > Matrix::apply(vector< double > coord)
 {
