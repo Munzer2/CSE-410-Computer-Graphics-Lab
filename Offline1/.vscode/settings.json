@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "*.embeddedhtml": "html",
+        "check_decompiled": "cpp",
+        "vector": "cpp",
+        "cmath": "cpp",
+        "iostream": "cpp",
+        "clock_decompiled": "cpp"
+    }
+}

@@ -1,0 +1,162 @@
+<!doctype html><!-- www.files.gallery -->
+  <html class="menu-disabled sidebar-closed" data-theme="contrast">
+    <script>
+    let theme = (() => {
+      try {
+        return localStorage.getItem('files:theme');
+      } catch (e) {
+        return false;
+      };
+    })() || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'contrast');
+    if(theme !== 'contrast') document.documentElement.dataset.theme = theme;
+    </script>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="robots" content="noindex, nofollow">
+      <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADABAMAAACg8nE0AAAAD1BMVEUui1f///9jqYHr9O+fyrIM/O8AAAABIklEQVR42u3awRGCQBBE0ZY1ABUCADQAoEwAzT8nz1CyLLszB6p+B8CrZuDWujtHAAAAAAAAAAAAAAAAAACOQPPp/2Y0AiZtJNgAjTYzmgDtNhAsgEkyrqDkApkVlsBDsq6wBIY4EIqBVuYVFkC98/ycCkr8CbIr6MCNsyosgJvsKxwFQhEw7APqY3mN5cBOnt6AZm/g6g2o8wYqb2B1BQcgeANXb0DuwOwNdKcHLgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeA20mArmB6Ugg0NsCcP/9JS8GAKSlVZMBk8p1GRgM2R4jMHu51a/2G1ju7wfoNrYHyCtUY3zpOthc4MgdNy3N/0PruC/JlVAwAAAAAAAAAAAAAAABwZuAHuVX4tWbMpKYAAAAASUVORK5CYII=">
+      <meta name="apple-mobile-web-app-capable" content="yes">
+      <title>./</title>
+            <link href="https://cdn.jsdelivr.net/npm/files.photo.gallery@0.9.12/css/files.css" rel="stylesheet">
+          </head>
+      <body class="body-loading">
+      <main id="main">
+        <nav id="topbar" class="topbar-sticky">
+          <div id="topbar-top">
+            <div id="search-container"><input id="search" class="input" type="search" placeholder="search" size="1" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" disabled></div>
+            <div id="change-layout" class="dropdown"></div>
+            <div id="change-sort" class="dropdown"></div>
+          </div>
+          <div id="topbar-breadcrumbs"></div>
+          <div id="files-sortbar"></div>
+          <div class="topbar-select"></div>
+          <div id="topbar-info" class="info-hidden"></div>
+        </nav>
+        <div id="files-container"><div id="files" class="list files-blocks"></div></div>
+      </main>
+
+      
+      <div id="contextmenu" class="dropdown-menu" tabindex="-1"></div>
+
+      
+<!-- javascript -->
+<script>
+const _c = {
+    "load_images": true,
+    "load_files_proxy_php": false,
+    "load_images_max_filesize": 1000000,
+    "image_resize_enabled": false,
+    "image_resize_dimensions": 320,
+    "image_resize_dimensions_retina": 480,
+    "image_resize_types": "jpeg, png, gif, webp, bmp, avif",
+    "image_resize_memory_limit": 256,
+    "image_resize_max_pixels": 60000000,
+    "image_resize_min_ratio": 1.5,
+    "folder_preview_image": false,
+    "menu_enabled": true,
+    "menu_show": true,
+    "menu_max_depth": 5,
+    "menu_sort": "name_asc",
+    "menu_cache_validate": true,
+    "layout": "blocks",
+    "sort": "name_asc",
+    "sort_dirs_first": true,
+    "sort_function": "locale",
+    "cache": true,
+    "title": "Files Gallery",
+    "history": true,
+    "transitions": true,
+    "click": "popup",
+    "click_window": "",
+    "click_window_popup": true,
+    "code_max_load": 100000,
+    "topbar_sticky": "scroll",
+    "context_menu": true,
+    "prevent_right_click": false,
+    "filter_live": true,
+    "filter_props": "name, filetype, mime, features, title",
+    "download_dir": "browser",
+    "assets": "https:\/\/cdn.jsdelivr.net\/npm\/",
+    "allow_upload": true,
+    "allow_delete": true,
+    "allow_rename": false,
+    "allow_new_folder": false,
+    "allow_new_file": false,
+    "allow_duplicate": false,
+    "allow_text_edit": false,
+    "allow_zip": false,
+    "allow_unzip": false,
+    "allow_move": false,
+    "allow_copy": false,
+    "allow_download": true,
+    "allow_mass_download": false,
+    "allow_mass_copy_links": false,
+    "allow_check_updates": false,
+    "allow_tests": true,
+    "demo_mode": false,
+    "upload_allowed_file_types": ".png, .jpeg, .gif, .jpg, .mp4, .webp, .mp3, .txt, .pdf, .doc, .docx, .xls, .xlsx",
+    "upload_max_filesize": 500000,
+    "upload_exists": "increment",
+    "popup_video": true,
+    "lang_default": "en",
+    "lang_auto": false,
+    "script": "index.php",
+    "menu_exists": false,
+    "menu_cache_hash": false,
+    "menu_cache_file": false,
+    "start_path": "",
+    "query_path_invalid": false,
+    "dirs": {
+        "": {
+            "basename": "html",
+            "fileperms": "0755",
+            "filetype": "dir",
+            "is_readable": true,
+            "is_writeable": true,
+            "is_link": false,
+            "is_dir": true,
+            "mime": "directory",
+            "mtime": 1746856202,
+            "path": "",
+            "files_count": 0,
+            "dirsize": 0,
+            "images_count": 0,
+            "url_path": "."
+        }
+    },
+    "dirs_hash": "68ffa4",
+    "resize_image_types": [
+        "jpeg",
+        "jpg",
+        "png",
+        "gif"
+    ],
+    "image_cache_hash": "483187",
+    "location_hash": "40d1b2d83998fabacb726e5bc3d22129",
+    "has_login": false,
+    "version": "0.9.12",
+    "index_html": 0,
+    "server_exif": false,
+    "md5": false,
+    "video_thumbs_enabled": true,
+    "lang_custom": false,
+    "x3_path": false,
+    "userx": false,
+    "watermark_files": false,
+    "ZipArchive_enabled": false
+};
+var CodeMirror = {};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.3/dist/sweetalert2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/yall-js@3.2.0/dist/yall.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/filesize@9.0.11/lib/filesize.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/screenfull@5.2.0/dist/screenfull.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.12/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.12/plugin/localizedFormat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.12/plugin/relativeTime.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@6.65.7/mode/meta.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/files.photo.gallery@0.9.12/js/files.js"></script>
