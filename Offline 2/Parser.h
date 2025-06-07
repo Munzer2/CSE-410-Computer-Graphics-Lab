@@ -8,11 +8,11 @@ using namespace std;
 class Parser {
     public:
     vector< Vect > cam; 
-    vector< double > perspect; 
+    vector< double > perspect; //// fovY, aspectRatio , near, far;
     ifstream _in; 
-    ofstream _out, _out2;
+    ofstream _out, _out2, _out3, _out4;
     stack< Matrix > _stk; 
-    Matrix ViewTrans;
+    Matrix ViewTrans, Project;
     string OutDir; 
 
     Parser(string in, string out); 
@@ -26,16 +26,58 @@ class Parser {
     void _drawTriangle(vector< vector< double >> coords); 
     void PrintCamAndPers();
     void computeViewTransMatrix(); 
+    void computeProjectionMatrix(); 
     void ProcessStage2(string Outstage2, string in); 
+    void ProcessStage3(string Outstage3, string in); 
 };
 
 
-void Parser::ProcessStage2(string Outstage2, string in) {
-    _out2.open(Outstage2);
-    if(!_out2.is_open()) {
-        cout << "No such output file for stage 2.\n";
+void Parser::computeProjectionMatrix() { 
+    double fovY = perspect[0] * PI / 180.0;
+    double t = perspect[2] * tan(fovY / 2.0);
+    double r = t * perspect[1];
+    Project._matrix[0][0] = perspect[2] / r;
+    Project._matrix[1][1] = perspect[2] / t;
+    Project._matrix[2][2] = -(perspect[3] + perspect[2]) / (perspect[3] - perspect[2]);
+    Project._matrix[2][3] = -(2 * perspect[3] * perspect[2]) / (perspect[3] - perspect[2]);
+    Project._matrix[3][2] = -1.0;
+    return;
+}
+
+void Parser::ProcessStage3(string Outstage3, string in) {
+    _out3.open(Outstage3);
+    _out3 << fixed << setprecision(7);
+    ifstream _in3(in);  
+    if(!_in3.is_open()) {
+        cout << "No such input file for stage 3.\n";
         exit(1);
     }
+    string line; 
+    while(getline(_in3, line)) {
+        if(line.empty()) {
+            _out3 << "\n"; 
+            continue; 
+        }
+        istringstream iss(line);
+        vector< double > coords(3);
+        for(int i = 0 ; i < 3; ++i) {
+            iss >> coords[i];
+        }
+        coords.push_back(1.0); // Homogeneous coordinate
+        coords = Project.apply(coords); 
+        for(int i = 0 ; i < 4; ++i) {
+            coords[i] /= coords[3];
+        }
+        for(int i =0 ;i < 3 ; ++i ) _out3 << coords[i] << " ";
+        _out3 << "\n"; 
+    }
+    _in3.close(); 
+    _out3.close(); 
+    return; 
+}
+
+void Parser::ProcessStage2(string Outstage2, string in) {
+    _out2.open(Outstage2);
     _out2 << fixed << setprecision(7);
     ifstream _in2(in);
     if(!_in2.is_open()) {
@@ -61,6 +103,7 @@ void Parser::ProcessStage2(string Outstage2, string in) {
     }
     _in2.close();
     _out2.close(); 
+    ProcessStage3(OutDir + "/stage3.txt", OutDir + "/stage2.txt");
     return; 
 }
 
@@ -101,6 +144,7 @@ Parser ::Parser(string in, string out) {
         _in >> perspect[i];
     }
     computeViewTransMatrix(); 
+    computeProjectionMatrix();
 }
 
 void Parser::_Translate(vector< double > amm) {
