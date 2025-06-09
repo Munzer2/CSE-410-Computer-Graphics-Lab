@@ -2,6 +2,7 @@
 #include<bits/stdc++.h>
 #include "Matrix.h"
 #include "vector.h"
+#include "bitmap_image.hpp"
 #define PI acos(-1.0)
 using namespace std;
 
@@ -18,6 +19,7 @@ class Parser {
     double X_left_limit, Y_bottom_limit, Z_front_limit, Z_rear_limit, dx, dy;
     vector<vector<vector< unsigned char >>> Frame;
     vector< vector< double >> Zbuffer;
+    mt19937 rng;
 
     Parser(string in, string out, string config); 
     void _Translate(vector< double > amm);
@@ -36,7 +38,8 @@ class Parser {
     void ProcessStage4(string z_buffer, string in); 
     void ReadConfig(string config); 
     void Initialize_Frame_Zbuffer(); 
-    void rasterizeTriangle(vector< vector< double >> &tri);
+    void rasterizeTriangle(vector< vector < double >> &tri); 
+    void ProcessImage_Zbuffer(ofstream &out);
 };
 
 
@@ -53,58 +56,68 @@ void Parser::computeProjectionMatrix() {
 }
 
 
+
 void Parser::rasterizeTriangle(vector< vector< double >> &tri) {
-    vector< pair< int, int >> px(3); 
-    vector< double > z(3);
-    for(int i = 0 ;i < 3; ++i) {
-        double _x = tri[i][0] , _y = tri[i][1], _z = tri[i][2];
-        double x_ws = X_left_limit + (_x + 1.0) * 0.5 * (-X_left_limit * 2.0);
-        double y_ws = Y_bottom_limit + (_y + 1.0) * 0.5 * (-Y_bottom_limit * 2.0);
-        int col = clamp((int)((x_ws - X_left_limit) / dx), 0, ScWidth - 1);
-        int row = clamp((int)((-Y_bottom_limit - y_ws) / dy), 0, ScHeight - 1);
-        px[i] = {row, col};
-        z[i] = _z ;  
-        // cout << row << " " << col << "\n"; 
-    }
-    // cout << "\n";
-    int min_y = ScHeight - 1, min_x = ScWidth - 1, max_x = 0, max_y = 0; 
-    for(auto &p : px) {
-        min_y = min(min_y, p.first); 
-        min_x = min(min_x, p.second);
-        max_x = max(max_x, p.second);
-        max_y = max(max_y, p.first);
+    vector< double > vx(3), vy(3), vz(3); 
+
+    for(int i = 0; i < 3; ++i) {
+        vx[i] = tri[i][0], vy[i] = tri[i][1];
+        vz[i] = tri[i][2]; 
     }
 
-    ///Assign a color.
-    mt19937 rng(12345);
+    double Y_top = -Y_bottom_limit;
+    double X_left = X_left_limit + dx/2;
+    int top_row = (int)((Y_top - *max_element(vy.begin(), vy.end())) / dy);
+    int bottom_row = (int)((Y_top - *min_element(vy.begin(), vy.end())) / dy);
+
+    top_row = clamp(top_row, 0, ScHeight - 1);
+    bottom_row = clamp(bottom_row, 0, ScHeight - 1);
+
+    
     uniform_int_distribution<int> dist(0, 255);
     vector< unsigned char > color = { (unsigned char)dist(rng), (unsigned char )dist(rng), (unsigned char)dist(rng)};
-    auto check = [&](int v1, int v2, int x, int y) {
-        return (px[v2].second - px[v1].second) * (x - px[v1].first) 
-                - (px[v2].first - px[v1].first) * (y - px[v1].second); 
-    };
 
-    auto tri_area = check(0, 1, px[2].first, px[2].second);
-    for(int y = min_y; y <= max_y; ++y) {
-        for( int x = min_x ; x <= max_x ; ++x) {
-            double c1 = check(0,1,x,y) * 1.0 / tri_area ;
-            double c2 = check(1,2,x,y) * 1.0 / tri_area ;
-            double c3 = check(2,0,x,y) * 1.0 / tri_area ;
-            if(c1 >= 0 && c2 >= 0 && c3 >= 0) {
-                ///pixel is inside the triangle.
-                double z_val = c1 * z[0] + c2 * z[1] + c3 * z[2];
-                if(z_val < Zbuffer[y][x]) {
-                    Zbuffer[y][x] = z_val; 
-                    Frame[y][x] = color; 
-                }
-            } 
+    for(int row = top_row; row <= bottom_row; ++row) {
+        double y_c = Y_top - row*dy - dy/2;
+        vector< pair< double, double >> I(2); 
+        int cnt = 0;
+        for(auto [i,j] : vector< pair< int, int>>{{0, 1}, {1, 2}, {2, 0}}) {
+            if((vy[i] <= y_c && vy[j] >= y_c) || (vy[i] >= y_c && vy[j] <= y_c)) {
+                if(vy[i] == vy[j]) continue; ////horizontal edge. So skip it.
+                double t = (y_c - vy[i]) / (vy[j] - vy[i]);
+                double x_i = vx[i] + t * (vx[j] - vx[i]);
+                double z_i = vz[i] + t * (vz[j] - vz[i]);
+                if(cnt  < 2) I[cnt++] = {x_i, z_i};
+            }
+        }
+        if(cnt < 2) continue; 
+        if(I[0].first > I[1].first) {
+            swap(I[0], I[1]); 
+        }
+
+        double x_l = I[0].first, x_r = I[1].first;
+        double z_l = I[0].second, z_r = I[1].second;
+        int c_l = clamp( int( ceil((x_l - X_left)/dx) ), 0, ScWidth-1 );
+        int c_r = clamp( int( floor((x_r - X_left)/dx) ), 0, ScWidth-1 );
+        if (c_l > c_r) continue;  
+        double span = c_r - c_l; 
+        double dz = (z_r - z_l)/ span; 
+        double zcur = z_l + ( (X_left + c_l*dx) < x_l ? dz*0.5 : 0.0 );
+
+
+        for(int col = c_l ; col <= c_r ; ++col) {
+            if(zcur < Zbuffer[row][col]) {
+                Zbuffer[row][col] = zcur; 
+                Frame[row][col] = color;
+            }
+            zcur += dz; 
         }
     }
 }
 
+
 void Parser::ProcessStage4(string Outstage4, string in) {
     _out4.open(Outstage4);
-    _out4 << fixed << setprecision(7);
     ifstream _in4(in);
     if(!_in4.is_open()) {
         cout << "No such input file for stage 4.\n";
@@ -137,6 +150,31 @@ void Parser::ProcessStage4(string Outstage4, string in) {
     _in4.close();
 
     /// Now to save the frame and z-buffer...... 
+    ProcessImage_Zbuffer(_out4);
+    _out4.close(); 
+    tri.clear();
+    return;
+}
+
+void Parser::ProcessImage_Zbuffer(ofstream &out) {
+    bitmap_image image(ScWidth, ScHeight);
+    for(int y = 0; y < ScHeight; ++y) {
+        for(int x = 0 ; x < ScWidth; ++x) {
+            auto &color = Frame[y][x];
+            image.set_pixel(x, y, color[0], color[1], color[2]);
+        }
+    }
+    image.save_image(OutDir + "/out.bmp");
+    ////now for the z-buffer.
+    out << fixed << setprecision(6);
+    for(int y = 0; y < ScHeight; ++y) {
+        for(int x = 0 ; x < ScWidth; ++x) {
+            if(Zbuffer[y][x] < Z_rear_limit) {
+                out << Zbuffer[y][x] << "\t";
+            }
+        } 
+        out << "\n";
+    }
     return;
 }
 
@@ -244,6 +282,7 @@ Parser ::Parser(string in, string out, string config) {
     computeProjectionMatrix();
     ReadConfig(config);
     Initialize_Frame_Zbuffer();
+    rng = mt19937(12345);
 }
 
 
