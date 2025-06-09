@@ -14,8 +14,12 @@ class Parser {
     stack< Matrix > _stk; 
     Matrix ViewTrans, Project;
     string OutDir; 
+    int ScWidth, ScHeight;
+    double X_left_limit, Y_bottom_limit, Z_front_limit, Z_rear_limit, dx, dy;
+    vector<vector<vector< unsigned char >>> Frame;
+    vector< vector< double >> Zbuffer;
 
-    Parser(string in, string out); 
+    Parser(string in, string out, string config); 
     void _Translate(vector< double > amm);
     void _Rotate(double angle, vector< double > a); 
     void _Scale(vector< double > scales); 
@@ -29,6 +33,10 @@ class Parser {
     void computeProjectionMatrix(); 
     void ProcessStage2(string Outstage2, string in); 
     void ProcessStage3(string Outstage3, string in); 
+    void ProcessStage4(string z_buffer, string in); 
+    void ReadConfig(string config); 
+    void Initialize_Frame_Zbuffer(); 
+    void rasterizeTriangle(vector< vector< double >> &tri);
 };
 
 
@@ -41,6 +49,94 @@ void Parser::computeProjectionMatrix() {
     Project._matrix[2][2] = -(perspect[3] + perspect[2]) / (perspect[3] - perspect[2]);
     Project._matrix[2][3] = -(2 * perspect[3] * perspect[2]) / (perspect[3] - perspect[2]);
     Project._matrix[3][2] = -1.0;
+    return;
+}
+
+
+void Parser::rasterizeTriangle(vector< vector< double >> &tri) {
+    vector< pair< int, int >> px(3); 
+    vector< double > z(3);
+    for(int i = 0 ;i < 3; ++i) {
+        double _x = tri[i][0] , _y = tri[i][1], _z = tri[i][2];
+        double x_ws = X_left_limit + (_x + 1.0) * 0.5 * (-X_left_limit * 2.0);
+        double y_ws = Y_bottom_limit + (_y + 1.0) * 0.5 * (-Y_bottom_limit * 2.0);
+        int col = clamp((int)((x_ws - X_left_limit) / dx), 0, ScWidth - 1);
+        int row = clamp((int)((-Y_bottom_limit - y_ws) / dy), 0, ScHeight - 1);
+        px[i] = {row, col};
+        z[i] = _z ;  
+        // cout << row << " " << col << "\n"; 
+    }
+    // cout << "\n";
+    int min_y = ScHeight - 1, min_x = ScWidth - 1, max_x = 0, max_y = 0; 
+    for(auto &p : px) {
+        min_y = min(min_y, p.first); 
+        min_x = min(min_x, p.second);
+        max_x = max(max_x, p.second);
+        max_y = max(max_y, p.first);
+    }
+
+    ///Assign a color.
+    mt19937 rng(12345);
+    uniform_int_distribution<int> dist(0, 255);
+    vector< unsigned char > color = { (unsigned char)dist(rng), (unsigned char )dist(rng), (unsigned char)dist(rng)};
+    auto check = [&](int v1, int v2, int x, int y) {
+        return (px[v2].second - px[v1].second) * (x - px[v1].first) 
+                - (px[v2].first - px[v1].first) * (y - px[v1].second); 
+    };
+
+    auto tri_area = check(0, 1, px[2].first, px[2].second);
+    for(int y = min_y; y <= max_y; ++y) {
+        for( int x = min_x ; x <= max_x ; ++x) {
+            double c1 = check(0,1,x,y) * 1.0 / tri_area ;
+            double c2 = check(1,2,x,y) * 1.0 / tri_area ;
+            double c3 = check(2,0,x,y) * 1.0 / tri_area ;
+            if(c1 >= 0 && c2 >= 0 && c3 >= 0) {
+                ///pixel is inside the triangle.
+                double z_val = c1 * z[0] + c2 * z[1] + c3 * z[2];
+                if(z_val < Zbuffer[y][x]) {
+                    Zbuffer[y][x] = z_val; 
+                    Frame[y][x] = color; 
+                }
+            } 
+        }
+    }
+}
+
+void Parser::ProcessStage4(string Outstage4, string in) {
+    _out4.open(Outstage4);
+    _out4 << fixed << setprecision(7);
+    ifstream _in4(in);
+    if(!_in4.is_open()) {
+        cout << "No such input file for stage 4.\n";
+        exit(1);
+    }
+    vector< vector < double >> tri;
+    string line;
+    // cout << "Stage-4:\n";
+    while(getline(_in4, line)) {
+        if(line.empty()) {
+            if(tri.size() == 3) {
+                rasterizeTriangle(tri);
+                tri.clear();
+            }
+            else {
+                ////edge case.
+            }
+        }
+        else {
+            istringstream iss(line);
+            vector< double > coords(3);
+            for(int i = 0 ; i < 3; ++i) {
+                iss >> coords[i];
+            }
+            tri.push_back(coords);
+        }
+    }
+    if (tri.size() == 3) rasterizeTriangle(tri); /// If file doesnt end with an empty line.
+
+    _in4.close();
+
+    /// Now to save the frame and z-buffer...... 
     return;
 }
 
@@ -73,6 +169,7 @@ void Parser::ProcessStage3(string Outstage3, string in) {
     }
     _in3.close(); 
     _out3.close(); 
+    ProcessStage4(OutDir + "/z_buffer.txt",OutDir + "/stage3.txt"); 
     return; 
 }
 
@@ -122,7 +219,7 @@ void Parser::computeViewTransMatrix() {
 }
 
 
-Parser ::Parser(string in, string out) {
+Parser ::Parser(string in, string out, string config) {
     OutDir = out; 
     _in.open(in);
     _out.open(out + "/stage1.txt");
@@ -145,6 +242,28 @@ Parser ::Parser(string in, string out) {
     }
     computeViewTransMatrix(); 
     computeProjectionMatrix();
+    ReadConfig(config);
+    Initialize_Frame_Zbuffer();
+}
+
+
+void Parser::Initialize_Frame_Zbuffer() {
+    Frame.resize(ScHeight, vector< vector< unsigned char >> (ScWidth, vector< unsigned char > (3, 0.0)));
+    Zbuffer.resize(ScHeight, vector< double >(ScWidth, Z_rear_limit)); 
+    return; 
+}
+
+void Parser::ReadConfig(string config) {
+    ifstream inConfig(config);
+    if(!inConfig.is_open()) {
+        cout << "No such config file." << endl;
+        exit(1);
+    }
+    inConfig >> ScWidth >> ScHeight;
+    inConfig >> X_left_limit >> Y_bottom_limit >> Z_front_limit >> Z_rear_limit;
+    dx = (-X_left_limit * 2.0) / ScWidth;
+    dy = (-Y_bottom_limit * 2.0) / ScHeight;
+    inConfig.close();
 }
 
 void Parser::_Translate(vector< double > amm) {

@@ -7,8 +7,8 @@ using namespace std;
 
 
 int main() { 
-    Parser check("Test Cases/1/scene.txt", "Outputs");
-    check.PrintCamAndPers();
+    Parser check("Test Cases/1/scene.txt", "Outputs", "Test Cases/1/config.txt");
+    // check.PrintCamAndPers();
     check._Parse(); 
     return 0;
 }
