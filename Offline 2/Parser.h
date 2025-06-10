@@ -39,7 +39,9 @@ class Parser {
     void ReadConfig(string config); 
     void Initialize_Frame_Zbuffer(); 
     void rasterizeTriangle(vector< vector < double >> &tri); 
+    void rasterizeTriangle2(vector< vector < double >> &tri); 
     void ProcessImage_Zbuffer(ofstream &out);
+    ~Parser();
 };
 
 
@@ -55,6 +57,72 @@ void Parser::computeProjectionMatrix() {
     return;
 }
 
+
+void Parser::rasterizeTriangle2(vector< vector< double >> &tri) {
+    struct P { double x, y, z ; };
+
+    array< P, 3 > points; 
+    for(int i = 0 ; i < 3; ++i ) { 
+        points[i] = { tri[i][0], tri[i][1], tri[i][2] };
+    }
+    sort(points.begin(), points.end(), [](const P &a, const P &b) {
+        return a.y >  b.y;
+    });
+
+    double topY = -Y_bottom_limit;
+    double leftX = X_left_limit + dx/2;
+
+    double top_scan = min(points[0].y, topY), bott_scan = max(points[2].y, Y_bottom_limit);
+    
+    int raw_top = int(round((top_scan - Y_bottom_limit) / dy));
+    int raw_bottom = int(round((bott_scan - Y_bottom_limit) / dy));
+
+    int top_row = min(raw_top, ScHeight - 1);
+    int bottom_row = max(raw_bottom, 0);
+
+    uniform_int_distribution<int> dist(0, 255);
+    vector< unsigned char > color = { (unsigned char)dist(rng), (unsigned char )dist(rng), (unsigned char)dist(rng)};
+
+    for(int row = top_row; row >= bottom_row; --row) { 
+        double y_s = Y_bottom_limit + row * dy + dy / 2.0;
+
+        vector< pair< double, double >> intersections;
+        auto Inter = [&](const P &p1, const P &p2) {
+            if(y_s >= min(p1.y, p2.y) && y_s <= max(p1.y, p2.y) && fabs(p1.y - p2.y) > 1e-9) {
+                double t = (y_s - p1.y) / (p2.y - p1.y);
+                double x_i = p1.x + t * (p2.x - p1.x);
+                double z_i = p1.z + t * (p2.z - p1.z);
+             intersections.push_back({x_i, z_i});
+                return; 
+            }
+        }; 
+        Inter(points[0], points[1]);
+        Inter(points[1], points[2]);
+        Inter(points[2], points[0]);
+        if( intersections.size() < 2) continue;
+        if(intersections[0].first > intersections[1].first) {
+            swap(intersections[0], intersections[1]);
+        }
+
+        int c_l = clamp(int(round((intersections[0].first - leftX) / dx)), 0, ScWidth - 1);
+        int c_r = clamp(int(round((intersections[1].first - leftX) / dx)), 0, ScWidth - 1);
+        if(c_l > c_r) continue;
+
+        for(int col = c_l; col <= c_r ; ++col) {
+            double x_p = leftX + col * dx;
+            double z_p = intersections[0].second + (x_p - intersections[0].first) * 
+                         (intersections[1].second - intersections[0].second) / (intersections[1].first - intersections[0].first);
+            int _row = ScHeight - 1 - row; 
+
+            if(z_p < Zbuffer[_row][col]) {
+                Zbuffer[_row][col] = z_p; 
+                Frame[_row][col] = color;
+            }
+        }
+    }
+
+    return;  
+}
 
 
 void Parser::rasterizeTriangle(vector< vector< double >> &tri) {
@@ -112,6 +180,7 @@ void Parser::rasterizeTriangle(vector< vector< double >> &tri) {
             }
             zcur += dz; 
         }
+        return; 
     }
 }
 
@@ -129,7 +198,7 @@ void Parser::ProcessStage4(string Outstage4, string in) {
     while(getline(_in4, line)) {
         if(line.empty()) {
             if(tri.size() == 3) {
-                rasterizeTriangle(tri);
+                rasterizeTriangle2(tri);
                 tri.clear();
             }
             else {
@@ -438,4 +507,12 @@ void Parser::_Parse() {
     _out.close();
     ProcessStage2(OutDir + "/stage2.txt", OutDir + "/stage1.txt"); 
     return;
+}
+
+
+Parser::~Parser() {
+    Frame.clear();
+    Zbuffer.clear();
+    Frame.shrink_to_fit();
+    Zbuffer.shrink_to_fit();
 }
