@@ -214,7 +214,7 @@ void Parser::ProcessStage4(string Outstage4, string in) {
             tri.push_back(coords);
         }
     }
-    if (tri.size() == 3) rasterizeTriangle2(tri); /// If file doesnt end with an empty line.
+    if (tri.size() == 3) rasterizeTriangle(tri); /// If file doesnt end with an empty line.
 
     _in4.close();
 
