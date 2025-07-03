@@ -1,0 +1,1 @@
+g++ .\2005018_main.cpp .\2005018_classes.cpp .\vector.cpp -o main -lfreeglut -lglu32 -lopengl32 -lgdi32

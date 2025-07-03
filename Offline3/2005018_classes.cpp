@@ -74,7 +74,7 @@ Floor::Floor(double floorWidth, double tileWidth) {
 
 void Floor::draw() {
     // Implement floor drawing logic here
-    GLdouble start_pos = ref_point.x * 2;
+    GLdouble start_pos = ref_point.x;
     GLint grid = (-ref_point.x * 2) / l;
     for(int i = 0 ; i < grid; ++i) {
         for(int j = 0 ; j < grid; ++j) { 

@@ -11,11 +11,12 @@ using namespace std;
 // vector<SpotLight> spotLights; // global vector to hold all spotlights
 vector<vector<unsigned char >> pixels; // global vector to hold pixel data for the image
 
-Vect eye(4, 4, 4); // camera position
-Vect center(0, 0, 0); // look-at point
+Vect eye(60, 60, 60); // camera position
+Vect look(-eye.x, -eye.y, -eye.z); // look-at point
 Vect up(0, 0, 1); // up vector 
-GLdouble  windH = 600, windW = 600; // window height and width
+GLint  windH = 600, windW = 600; // window height and width
 GLint imgH = 600, imgW = 600; // image height and width
+GLdouble angleChange = 5.0, camSpeed = 20.0; // angle change for rotation
 GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
 GLdouble t_min = 1e6; // minimum t value for intersection 
 
@@ -25,7 +26,7 @@ void _init() {
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45.0, windW / windH, 0.1, 1000.0); // Perspective projection
+    gluPerspective(45.0, windW / windH, 0.1, 10000.0); // Perspective projection
     // glMatrixMode(GL_MODELVIEW);
     // glLoadIdentity();
 }
@@ -38,7 +39,7 @@ void _display()
     glLoadIdentity();
 
     gluLookAt(eye.x, eye.y, eye.z,
-              center.x, center.y, center.z,
+              eye.x + look.x, eye.y + look.y, eye.z + look.z,
               up.x, up.y, up.z);    
               
     for(int o = 0 ; o < objects.size(); ++o) {
@@ -145,10 +146,10 @@ void loadData() {
 void capture() {
     // initialize bitmap image and set background color
     GLdouble planeDist = (windH/2.0) / tan(45.0 * M_PI / 180.0); /// assuming viewAngle is 45 degrees. Will change later
-    Vect look = (center - eye).normalize();
-    Vect right = (look ^ up).normalize();
+    Vect _look = (look - eye).normalize();
+    Vect right = (_look ^ up).normalize();
 
-    Vect topLeft = eye + look * planeDist + up * (windH / 2.0) - right * (windW / 2.0);
+    Vect topLeft = eye + _look * planeDist + up * (windH / 2.0) - right * (windW / 2.0);
     double du = windW / imgW, dv = windH / imgH;
     topLeft = topLeft + right * (0.5 * du) - up * (0.5 * dv); // center the top left pixel
     int nearest = 0; 
@@ -195,12 +196,64 @@ void _keyboard(unsigned char key, int x, int y) {
             capture(); 
             glutPostRedisplay();
             break;
+        case '1':
+            look = look.rotate(angleChange, up); 
+            break;
         case '2':
+            look = look.rotate(-angleChange, up); 
+            break;
+        case '3':
+            {
+                Vect right = (look ^ up).normalize(); 
+                look = look.rotate(angleChange, right);
+                up = (right ^ look).normalize();
+                break;
+            }
+        case '4':
+            {
+                Vect right = (look ^ up).normalize(); 
+                look = look.rotate(-angleChange, right);
+                up = (right ^ look).normalize();
+                break;
+            }
+        case '5': 
+            up = up.rotate(angleChange, look.normalize());
+            break; 
+        case '6':
+            up  = up.rotate(-angleChange, look.normalize());
             break;
         default: 
             break;
     }
+    glutPostRedisplay();
     return; 
+}
+
+void _specialKeyboard(int key, int x, int y) {
+    Vect right = (look ^ up).normalize();
+    switch(key) {
+        case GLUT_KEY_UP:
+            eye += look.normalize() * camSpeed; // move camera forward
+            break;
+        case GLUT_KEY_DOWN:
+            eye -= look.normalize() * camSpeed; // move camera backward
+            break;
+        case GLUT_KEY_LEFT:
+            eye -= right * camSpeed; 
+            break; 
+        case GLUT_KEY_RIGHT:
+            eye += right * camSpeed; 
+            break;
+        case GLUT_KEY_PAGE_DOWN:
+            eye -= up.normalize() * camSpeed; 
+            break;
+        case GLUT_KEY_PAGE_UP:
+            eye += up.normalize() * camSpeed;
+            break;
+        default:
+            break;
+    }
+    glutPostRedisplay();
 }
 
 
@@ -214,7 +267,7 @@ int main(int argc, char** argv) {
 
     glutDisplayFunc(_display);
     glutKeyboardFunc(_keyboard);
-    // glutSpecialFunc(_specialKeyboard);
+    glutSpecialFunc(_specialKeyboard);
     // glutTimerFunc(_animationSpeed, _timer, 0);
     
     _init();
