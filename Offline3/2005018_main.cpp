@@ -6,18 +6,15 @@
 using namespace std;
 
 
-// vector<Object*> objects; // global vector to hold all objects
-// vector<PointLight> pointLights; // global vector to hold all point lights
-// vector<SpotLight> spotLights; // global vector to hold all spotlights
 vector<vector<unsigned char >> pixels; // global vector to hold pixel data for the image
 
 Vect eye(60, 60, 60); // camera position
-Vect look(-eye.x, -eye.y, -eye.z); // look-at point
+Vect look = Vect(-eye.x, -eye.y, -eye.z); // look-at point
 Vect up(0, 0, 1); // up vector 
 GLint  windH = 600, windW = 600; // window height and width
 GLint imgH = 600, imgW = 600; // image height and width
 GLdouble angleChange = 5.0, camSpeed = 20.0; // angle change for rotation
-GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
+GLdouble fovY = 45.0, znear = 1, zfar = 10000.0; // field of view, near and far plane distances
 GLdouble t_min = 1e6; // minimum t value for intersection 
 
 void _init() {
@@ -26,9 +23,27 @@ void _init() {
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45.0, windW / windH, 0.1, 10000.0); // Perspective projection
+    gluPerspective(fovY, (GLdouble)windW / (GLdouble)windH, znear, zfar); // Perspective projection
     // glMatrixMode(GL_MODELVIEW);
     // glLoadIdentity();
+}
+
+void _axes() {
+    glBegin(GL_LINES);
+    {
+        glColor3f(1.0f, 0.0f, 0.0f); // Red for X-axis
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(100.0f, 0.0f, 0.0f);
+
+        glColor3f(0.0f, 1.0f, 0.0f); // Green for Y-axis
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 100.0f, 0.0f);
+
+        glColor3f(0.0f, 0.0f, 1.0f); // Blue for Z-axis
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 100.0f);
+    }
+    glEnd();
 }
 
 void _display()
@@ -40,10 +55,16 @@ void _display()
 
     gluLookAt(eye.x, eye.y, eye.z,
               eye.x + look.x, eye.y + look.y, eye.z + look.z,
-              up.x, up.y, up.z);    
+              up.x, up.y, up.z);  
+    
+    // _axes(); 
               
     for(int o = 0 ; o < objects.size(); ++o) {
         objects[o]->draw(); 
+    }
+
+    for(int p = 0 ; p < pointLights.size(); ++p) {
+        pointLights[p].draw();
     }
 
     glutSwapBuffers();
@@ -51,7 +72,7 @@ void _display()
 
 void loadData() {
     /// read a text file called scene.txt
-    ifstream file("scene.txt");
+    ifstream file("scene_test.txt");
     string line; 
     file >> recurL >> TotPix >> TotObj;
     for(int i = 0; i < TotObj; ++i) {
@@ -136,53 +157,64 @@ void loadData() {
     file.close(); 
 
     Floor *floor = new Floor(1000, 20);
-    floor->setColor({0.5, 0.5, 0.5}); // gray color
-    floor->setShine(10); // set shine value
-    floor->setCoefficients({0.1, 0.1, 0.1, 0.1}); // set coefficients
-    objects.push_back(floor); // add floor to the objects vector 
+    floor->setColor({0.5, 0.5, 0.5}); 
+    floor->setShine(10); 
+    floor->setCoefficients({0.1, 0.1, 0.1, 0.1});
+    objects.push_back(floor); 
     return; 
 }
 
 void capture() {
-    // initialize bitmap image and set background color
-    GLdouble planeDist = (windH/2.0) / tan(45.0 * M_PI / 180.0); /// assuming viewAngle is 45 degrees. Will change later
-    Vect _look = (look - eye).normalize();
+    double planeDist = ((GLdouble)windH / 2.0) / tan(DegToRad(fovY) / 2.0); 
+    double halfH = tan(DegToRad(fovY) / 2.0) * planeDist;
+    double halfW = halfH * ((GLdouble)windW / (GLdouble)windH);
+    // Vect _look = (look + eye).normalize();
+    Vect _look = look.normalize();
     Vect right = (_look ^ up).normalize();
+    Vect topLeft = eye + (_look * planeDist) + (up * halfH) -(right * halfW);
+    double du = (2.0 * halfW) / (GLdouble)imgW;
+    double dv = (2.0 * halfH) / (GLdouble)imgH;
+    topLeft = topLeft + right * (0.5 * du) - up * (0.5 * dv);
 
-    Vect topLeft = eye + _look * planeDist + up * (windH / 2.0) - right * (windW / 2.0);
-    double du = windW / imgW, dv = windH / imgH;
-    topLeft = topLeft + right * (0.5 * du) - up * (0.5 * dv); // center the top left pixel
-    int nearest = 0; 
+    int nearest; 
     double t, tMin; 
     pixels.assign(imgH, vector<unsigned char>(imgW * 3));
     for(int i = 0 ; i < imgW; ++i) {
         for(int j = 0 ; j < imgH; ++j) {
             Vect currPix = topLeft + right * (i * du) - up * (j * dv);
             Vect dir = (currPix - eye).normalize();
+            vector< double > col(3); 
             tMin = DBL_MAX;
+            nearest = -1;
             Ray r(eye, dir);  
             for(int o = 0; o < objects.size(); ++o) {
-                t = objects[o]->intersect(&r , objects[o]->color, 0); 
+                t = objects[o]->intersect(&r , col , 0); 
                 if(t > 0 && t < tMin) {
                     tMin = t; 
                     nearest = o; 
                 }
             }
-            double t_min = objects[nearest]->intersect(&r , objects[nearest]->color, 1);
+            
+            if(nearest == -1) { /// black pixel
+                pixels[j][i * 3] = 0; 
+                pixels[j][i * 3 + 1] = 0; 
+                pixels[j][i * 3 + 2] = 0;
+                continue;
+            }
+            double t_min = objects[nearest]->intersect(&r , col, 1);
             // update image pixel
-            pixels[j][i * 3] = (unsigned char)(objects[nearest]->color[0] * 255);
-            pixels[j][i * 3 + 1] = (unsigned char)(objects[nearest]->color[1] * 255);
-            pixels[j][i * 3 + 2] = (unsigned char)(objects[nearest]->color[2] * 255);
+            pixels[j][i * 3] = (unsigned char)(col[0] * 255);
+            pixels[j][i * 3 + 1] = (unsigned char)(col[1] * 255);
+            pixels[j][i * 3 + 2] = (unsigned char)(col[2] * 255);
         }
     } 
-    ///save image to a file
     bitmap_image image(imgW, imgH);
     for(int i = 0 ;i < imgH; ++i) {
         for(int j = 0; j < imgW; ++j) {
             image.set_pixel(j, i,
-                pixels[i][j * 3 + 2], // Red channel
+                pixels[i][j * 3], // Red channel
                 pixels[i][j * 3 + 1], // Green channel
-                pixels[i][j * 3]      // Blue channel
+                pixels[i][j * 3 + 2]      // Blue channel
             );
         } 
     }
@@ -222,6 +254,8 @@ void _keyboard(unsigned char key, int x, int y) {
         case '6':
             up  = up.rotate(-angleChange, look.normalize());
             break;
+        case 'q':
+            exit(0);  
         default: 
             break;
     }

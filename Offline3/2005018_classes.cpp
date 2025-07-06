@@ -5,6 +5,7 @@
 vector<Object*> objects;
 vector<PointLight> pointLights;
 vector<SpotLight> spotLights;
+GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
 
 // ===== Object =====
 Object::Object()
@@ -20,7 +21,7 @@ void Object::setShine(int _shine) { shine = _shine; }
 
 void Object::setCoefficients(vector<double> _coeff) { coEfficients = _coeff; }
 
-double Object::intersect(Ray* r, vector<double> color, int lvl) {
+double Object::intersect(Ray* r, vector<double>& color, int lvl) {
     return -1.0;
 }
 
@@ -38,11 +39,11 @@ void Sphere::draw() {
     glPopMatrix();
 }
 
-double Sphere::intersect(Ray* r, vector<double> color, int lvl) {
+double Sphere::intersect(Ray* r, vector<double> &color, int lvl) {
     const double EPS = 1e-6;
     Vect dirN = r->dir.normalize();
     Vect oc = r->start - ref_point;
-    double t_p = oc.dot(dirN);
+    double t_p = (ref_point - r->start).dot(dirN);
     if (t_p < 0 && oc.dot(oc) > radius*radius) return -1.0;
     double d2 = oc.dot(oc) - t_p*t_p;
     if (d2 > radius*radius) return -1.0;
@@ -52,13 +53,87 @@ double Sphere::intersect(Ray* r, vector<double> color, int lvl) {
     double t = (t0 > EPS) ? t0 : (t1 > EPS ? t1 : -1.0);
     if (t < 0) return -1.0;
     if (lvl == 0) return t;
-    return t;
+    
+
+    Vect P = r->start + dirN * t; // Intersection point
+    Vect N = (P - ref_point).normalize(); // Normal at intersection point
+    
+
+    for (int c = 0; c < 3; ++c) color[c] = this->color[c] * coEfficients[0];  
+
+    for(auto &p : pointLights) {
+        Vect LD = (p.pos - P).normalize(); // Light direction
+        Ray shadowRay(P + N*EPS, LD); /// 
+
+        bool inShadow = false;
+        double distLight = (p.pos - P).magnitude();
+        for(auto &obj : objects) {
+            if(obj == this) continue; // Skip self
+            vector< double > tmp(3); 
+            double t_shadow = obj->intersect(&shadowRay, tmp, 0);
+            if(t_shadow > 0 && t_shadow < distLight) {
+                inShadow = true; // Found an object blocking the light
+                break;
+            }
+        }
+        if(!inShadow) {
+            double dotNL = max(0.0, N.dot(LD)); // Diffuse component
+            Vect V = dirN * -1.0; 
+            Vect R = (N*2* dotNL - LD).normalize(); // Reflection vector
+            double spec = pow(max(0.0, R.dot(V)), shine); // specular component
+
+            for(int c = 0 ; c < 3; ++c) {
+                color[c] += p.color[c] * (coEfficients[1] * dotNL * this->color[c] + coEfficients[2] * spec);
+            }
+        }
+    }
+
+    // for(auto &s : spotLights) {
+    //     Vect L = (s.pointLight.pos - P).normalize(); // Light direction
+    //     Ray shadowRay(P + N*EPS, L); 
+    //     double distLight = (s.pointLight.pos - P).magnitude();
+    //     Vect beam = s.dir.normalize();
+    // }
+
+    if(lvl < recurL && coEfficients[3] > 0) {
+        Vect V = (r->dir * -1.0).normalize(); 
+        Vect Rdir = (N * 2 * (N.dot(V)) - V).normalize(); // Reflection direction
+        Ray reflecRay(P+N*EPS, Rdir); 
+        vector< double > reflecColor(3, 0.0), tmp(3);
+        double t_reflec = -1.0;
+        int bestId = -1;
+        for(auto &obj : objects) {
+            if(obj == this) continue; 
+            double t = obj->intersect(&reflecRay, tmp, lvl + 1);
+            if(t > 0 && (bestId < 0 || t < t_reflec)) {
+                t_reflec = t;
+                bestId = &obj - &objects[0]; 
+                reflecColor = tmp;
+            }
+        }
+        if(bestId >= 0) {
+            for(int c = 0; c < 3; ++c) {
+                color[c] += coEfficients[3] * reflecColor[c]; // Add reflection color
+            }
+        }
+    }
+    
+
+    return t; 
 }
 
 // ===== PointLight =====
 PointLight::PointLight(Vect pos, vector<double> c) {
     this->pos = Vect(pos.x, pos.y, pos.z);
     color = c;
+}
+
+void PointLight::draw() {
+    glPushMatrix();
+    glTranslatef(pos.x, pos.y, pos.z);
+    glColor3f(color[0], color[1], color[2]);
+    glutSolidSphere(1.0, 10, 10); // Draw a small sphere to represent the light
+    glPopMatrix();
 }
 
 // ===== SpotLight =====
@@ -97,6 +172,34 @@ void Floor::draw() {
     }
 }
 
+double Floor::intersect(Ray* r, vector< double >& color, int lvl)  {
+    const double EPS = 1e-6;
+    Vect dir = r->dir.normalize();
+    if(fabs(dir.z) < EPS) return -1.0; // Ray is parallel to the floor
+
+    double t = (ref_point.z - r->start.z) / dir.z; 
+    if(t < EPS) return -1.0; 
+
+    if(lvl == 0) return t; // Return intersection distance for level 0
+
+    Vect P = r->start + dir * t;
+    if(fabs(P.x - ref_point.x) > ref_point.x * 0.5 || fabs(P.y - ref_point.y) > ref_point.y * 0.5) {
+        return -1.0; 
+    }
+    
+    Vect N(0, 0, 1);
+    int x = floor((P.x - ref_point.x) / l);
+    int y = floor((P.y - ref_point.y) / l);
+    Vect baseColor = ((x+y)%2 == 0 ? Vect(1.0, 1.0, 1.0) : Vect(0.0, 0.0, 0.0));
+    color[0] = baseColor.x * coEfficients[0];
+    color[1] = baseColor.y * coEfficients[0];
+    color[2] = baseColor.z * coEfficients[0];
+
+    //// Now do diffuse and specular.
+
+    return t; 
+}
+
 // ===== Triangle =====
 Triangle::Triangle(Vect _v1, Vect _v2, Vect _v3)
     : v1(_v1), v2(_v2), v3(_v3) {
@@ -113,7 +216,7 @@ void Triangle::draw() {
     glEnd();
 }
 
-double Triangle::intersect(Ray *r, vector<double> color, int lvl) {
+double Triangle::intersect(Ray *r, vector<double>& color, int lvl) {
     const double EPS = 1e-6; 
 
     Vect dir = r->dir.normalize(); 
@@ -151,7 +254,7 @@ void General::draw() {
     /// nothing to draw.
 }
 
-double General::intersect(Ray* r, vector<double> color, int lvl) {
+double General::intersect(Ray* r, vector<double>& color, int lvl) {
     const double EPS = 1e-6;
     Vect O = r->start; 
     Vect D = r->dir.normalize();

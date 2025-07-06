@@ -17,6 +17,7 @@ class Ray;
 extern vector<Object*> objects;
 extern vector<PointLight> pointLights;
 extern vector<SpotLight> spotLights;
+extern GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
 
 // Base class for all scene objects
 class Object {
@@ -34,7 +35,7 @@ public:
     void setColor(vector<double> _c);
     void setShine(int _shine);
     void setCoefficients(vector<double> _coeff);
-    virtual double intersect(Ray* r, vector<double> color, int lvl);
+    virtual double intersect(Ray* r, vector<double>& color, int lvl);
 };
 
 // Sphere object
@@ -44,7 +45,7 @@ public:
 
     Sphere(double x, double y, double z, double r);
     void draw() override;
-    double intersect(Ray* r, vector<double> color, int lvl) override;
+    double intersect(Ray* r, vector<double> &color, int lvl) override;
 };
 
 // Point light source
@@ -54,6 +55,7 @@ public:
     vector<double> color;
 
     PointLight(Vect pos, vector<double> c);
+    void draw(); 
 };
 
 // Spotlight with cutoff angle
@@ -64,6 +66,7 @@ public:
     double angle;
 
     SpotLight(Vect pos, vector<double> c, Vect _dir, double a);
+    void draw();
 };
 
 // Checkerboard floor
@@ -71,6 +74,7 @@ class Floor : public Object {
 public:
     Floor(double floorWidth, double tileWidth);
     void draw() override;
+    double intersect(Ray* r, vector<double>& color, int lvl) override;
 };
 
 // Triangle object
@@ -81,7 +85,7 @@ public:
 
     Triangle(Vect _v1, Vect _v2, Vect _v3);
     void draw() override;
-    double intersect(Ray* r, vector<double> color, int lvl) override;
+    double intersect(Ray* r, vector<double>& color, int lvl) override;
 };
 
 class General : public Object {
@@ -93,7 +97,7 @@ public:
             double _e, double _f, double _g, double _h,
             double _i, double _j, Vect ref, double l, double w, double h);
     void draw() override;
-    double intersect(Ray* r, vector<double> color, int lvl) override;
+    double intersect(Ray* r, vector<double>& color, int lvl) override;
 };
 
 // Ray for tracing
