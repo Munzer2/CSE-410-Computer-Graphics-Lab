@@ -7,6 +7,69 @@ vector<PointLight> pointLights;
 vector<SpotLight> spotLights;
 GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
 
+//General functions
+void handleReflection(Ray *r, const Vect & P, Vect & N, vector< double > &color, int lvl, Object * obj) {
+    const double EPS = 1e-6;
+    if(lvl < recurL && obj->coEfficients[3] > 0) {
+        Vect V = (r->dir * -1.0).normalize();
+        Vect Rdir = (N * 2 * (N.dot(V)) - V).normalize(); 
+        Ray reflecRay(P + N * EPS, Rdir);
+
+        vector< double > reflectColor(3, 0.0), tmp(3);
+        double t_reflec = -1.0; 
+        int best = -1; 
+        for(auto &o : objects) {
+            if(o == obj) continue;
+            double t = o->intersect(&reflecRay, tmp, lvl + 1);
+            if(t> 0 && ( best < 0 || t < t_reflec)) {
+                t_reflec = t; 
+                best = &o - &objects[0];
+                reflectColor = tmp; 
+            }
+        } 
+
+        if(best >= 0) {
+            for(int c = 0; c < 3; ++c) {
+                color[c] += obj->coEfficients[3] * reflectColor[c]; 
+            }
+        }
+    }
+    return;
+}
+
+
+void handlePointLightsEffects(Ray *r, Vect &P, Object * o, Vect N, vector<double> &color, vector<double> &baseColor) {
+    const double EPS = 1e-6;
+    for(auto &p : pointLights) {
+        Vect LD = (p.pos - P).normalize(); // Light direction
+        Ray shadowRay(P + N*EPS, LD);  /// avoid self-shadowing 
+
+        bool inShadow = false;
+        double distLight = (p.pos - P).magnitude();
+        for(auto &obj : objects) {
+            if(obj == o) continue; // Skip self
+            vector< double > tmp(3); 
+            double t_shadow = obj->intersect(&shadowRay, tmp, 0);
+            if(t_shadow > 0 && t_shadow < distLight) {
+                inShadow = true; // Found an object blocking the light
+                break;
+            }
+        }
+        if(inShadow) continue; // Skip if in shadow
+
+        double lambert = max(0.0, N.dot(LD)); // Diffuse component
+        for(int c = 0 ; c < 3; ++c) {
+            color[c] += p.color[c] * (o->coEfficients[1] * lambert * baseColor[c]); // Diffuse component
+        }
+
+        Vect V = (r->dir * -1.0).normalize();        // View direction
+        Vect R = (N * 2 * lambert - LD).normalize(); // Reflection vector
+        double spec = pow(max(0.0, R.dot(V)), o->shine); 
+        for(int c = 0 ; c < 3 ; ++c ) color[c] += p.color[c] * o->coEfficients[2] * spec; 
+    }
+    return;
+}
+
 // ===== Object =====
 Object::Object()
     : ref_point(), h(0), w(0), l(0), shine(0) {}
@@ -24,6 +87,8 @@ void Object::setCoefficients(vector<double> _coeff) { coEfficients = _coeff; }
 double Object::intersect(Ray* r, vector<double>& color, int lvl) {
     return -1.0;
 }
+
+
 
 // ===== Sphere =====
 Sphere::Sphere(double x, double y, double z, double r) {
@@ -58,67 +123,12 @@ double Sphere::intersect(Ray* r, vector<double> &color, int lvl) {
     Vect P = r->start + dirN * t; // Intersection point
     Vect N = (P - ref_point).normalize(); // Normal at intersection point
     
+    vector< double > baseColor = this->color; 
+    for (int c = 0; c < 3; ++c) color[c] = baseColor[c] * coEfficients[0];  // Ambient component
 
-    for (int c = 0; c < 3; ++c) color[c] = this->color[c] * coEfficients[0];  
+    handlePointLightsEffects(r, P, this, N, color, baseColor);
 
-    for(auto &p : pointLights) {
-        Vect LD = (p.pos - P).normalize(); // Light direction
-        Ray shadowRay(P + N*EPS, LD); /// 
-
-        bool inShadow = false;
-        double distLight = (p.pos - P).magnitude();
-        for(auto &obj : objects) {
-            if(obj == this) continue; // Skip self
-            vector< double > tmp(3); 
-            double t_shadow = obj->intersect(&shadowRay, tmp, 0);
-            if(t_shadow > 0 && t_shadow < distLight) {
-                inShadow = true; // Found an object blocking the light
-                break;
-            }
-        }
-        if(!inShadow) {
-            double dotNL = max(0.0, N.dot(LD)); // Diffuse component
-            Vect V = dirN * -1.0; 
-            Vect R = (N*2* dotNL - LD).normalize(); // Reflection vector
-            double spec = pow(max(0.0, R.dot(V)), shine); // specular component
-
-            for(int c = 0 ; c < 3; ++c) {
-                color[c] += p.color[c] * (coEfficients[1] * dotNL * this->color[c] + coEfficients[2] * spec);
-            }
-        }
-    }
-
-    // for(auto &s : spotLights) {
-    //     Vect L = (s.pointLight.pos - P).normalize(); // Light direction
-    //     Ray shadowRay(P + N*EPS, L); 
-    //     double distLight = (s.pointLight.pos - P).magnitude();
-    //     Vect beam = s.dir.normalize();
-    // }
-
-    if(lvl < recurL && coEfficients[3] > 0) {
-        Vect V = (r->dir * -1.0).normalize(); 
-        Vect Rdir = (N * 2 * (N.dot(V)) - V).normalize(); // Reflection direction
-        Ray reflecRay(P+N*EPS, Rdir); 
-        vector< double > reflecColor(3, 0.0), tmp(3);
-        double t_reflec = -1.0;
-        int bestId = -1;
-        for(auto &obj : objects) {
-            if(obj == this) continue; 
-            double t = obj->intersect(&reflecRay, tmp, lvl + 1);
-            if(t > 0 && (bestId < 0 || t < t_reflec)) {
-                t_reflec = t;
-                bestId = &obj - &objects[0]; 
-                reflecColor = tmp;
-            }
-        }
-        if(bestId >= 0) {
-            for(int c = 0; c < 3; ++c) {
-                color[c] += coEfficients[3] * reflecColor[c]; // Add reflection color
-            }
-        }
-    }
-    
-
+    handleReflection(r, P, N, color, lvl, this);
     return t; 
 }
 
@@ -183,19 +193,22 @@ double Floor::intersect(Ray* r, vector< double >& color, int lvl)  {
     if(lvl == 0) return t; // Return intersection distance for level 0
 
     Vect P = r->start + dir * t;
-    if(fabs(P.x - ref_point.x) > ref_point.x * 0.5 || fabs(P.y - ref_point.y) > ref_point.y * 0.5) {
+    if(fabs(P.x) > -ref_point.x || fabs(P.y) > -ref_point.y) {
         return -1.0; 
     }
     
     Vect N(0, 0, 1);
     int x = floor((P.x - ref_point.x) / l);
     int y = floor((P.y - ref_point.y) / l);
-    Vect baseColor = ((x+y)%2 == 0 ? Vect(1.0, 1.0, 1.0) : Vect(0.0, 0.0, 0.0));
-    color[0] = baseColor.x * coEfficients[0];
-    color[1] = baseColor.y * coEfficients[0];
-    color[2] = baseColor.z * coEfficients[0];
+    vector<double> baseColor = ((x+y)%2 == 0 ? vector<double>{1.0, 1.0, 1.0} : vector<double>{0.0, 0.0, 0.0});
+    for(int c = 0; c < 3; ++c) {
+        color[c] = baseColor[c] * coEfficients[0]; // Ambient component
+    }
 
-    //// Now do diffuse and specular.
+    handlePointLightsEffects(r, P, this, N, color, baseColor);
+    /// will handle spotlights here. 
+
+    handleReflection(r, P, N, color, lvl, this);
 
     return t; 
 }
@@ -272,7 +285,7 @@ double General::intersect(Ray* r, vector<double>& color, int lvl) {
 
     double t1 = (-_b + sqrt(check)) / (2 * _a);
     double t2 = (-_b - sqrt(check)) / (2 * _a);
-    if(t1 < t2 ) swap(t1,t2);
+    if(t1 > t2 ) swap(t1,t2);
 
     for(double t : {t1, t2}) {
         if(t < EPS) continue; /// behind ray start

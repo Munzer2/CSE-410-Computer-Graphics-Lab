@@ -35,8 +35,12 @@ public:
     void setColor(vector<double> _c);
     void setShine(int _shine);
     void setCoefficients(vector<double> _coeff);
-    virtual double intersect(Ray* r, vector<double>& color, int lvl);
+    virtual double intersect(Ray* r, vector<double>& color, int lvl); 
 };
+
+/// Some helpful functions
+void handleReflection(Ray *r, const Vect & P, Vect & N, vector< double > &color, int lvl, Object * obj);
+void handlePointLightsEffects(Ray *r, Vect &P, Object * o, Vect N, vector<double> &color, vector<double> &baseColor);
 
 // Sphere object
 class Sphere : public Object {
