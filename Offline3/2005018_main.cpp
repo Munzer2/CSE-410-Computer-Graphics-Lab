@@ -64,11 +64,11 @@ void _display()
     }
 
     for(int p = 0 ; p < pointLights.size(); ++p) {
-        pointLights[p].draw();
+        pointLights[p]->draw();
     }
 
     for(int s = 0 ; s < spotLights.size(); ++s) {
-        spotLights[s].draw();
+        spotLights[s]->draw();
     }
 
     glutSwapBuffers();
@@ -143,7 +143,7 @@ void loadData() {
         Vect pos , col; 
         file >> pos.x >> pos.y >> pos.z;
         file >> col.x >> col.y >> col.z;
-        PointLight p(pos, {col.x, col.y, col.z});
+        PointLight *p = new PointLight(pos, {col.x, col.y, col.z});
         pointLights.push_back(p); // add point light to the pointLights vector
     }
 
@@ -155,7 +155,7 @@ void loadData() {
         file >> col.x >> col.y >> col.z;
         file >> dir.x >> dir.y >> dir.z;
         file >> angle; /// cutoff angle in degrees
-        SpotLight s(pos, {col.x, col.y, col.z}, dir, angle);
+        SpotLight *s = new SpotLight(pos, {col.x, col.y, col.z}, dir, angle);
         spotLights.push_back(s); // add spotlight to the spotLights vector
     }
     file.close(); 
@@ -307,6 +307,14 @@ void _specialKeyboard(int key, int x, int y) {
 }
 
 
+void freeMem() {
+    for(int i = 0 ; i <  objects.size(); ++i) delete objects[i]; 
+
+    for(int i = 0 ; i <  pointLights.size(); ++i) delete pointLights[i]; 
+
+    for(int i = 0 ; i <  spotLights.size(); ++i) delete spotLights[i]; 
+}
+
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
     loadData(); 
@@ -322,5 +330,6 @@ int main(int argc, char** argv) {
     
     _init();
     glutMainLoop();
+    freeMem(); 
     return 0;
 }

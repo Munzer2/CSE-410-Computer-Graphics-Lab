@@ -3,8 +3,8 @@
 
 // Definitions of global containers
 vector<Object *> objects;
-vector<PointLight> pointLights;
-vector<SpotLight> spotLights;
+vector<PointLight *> pointLights;
+vector<SpotLight *> spotLights;
 GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
 
 // General functions
@@ -49,11 +49,11 @@ void handlePointLightsEffects(Ray *r, Vect &P, Object *o, Vect N, vector<double>
     const double EPS = 1e-6;
     for (auto &p : pointLights)
     {
-        Vect LD = (p.pos - P).normalize(); // Light direction
+        Vect LD = (p->pos - P).normalize(); // Light direction
         Ray shadowRay(P + LD * EPS, LD);   /// avoid self-shadowing
 
         bool inShadow = false;
-        double distLight = (p.pos - P).magnitude();
+        double distLight = (p->pos - P).magnitude();
         for (auto &obj : objects)
         {
             if (obj == o)
@@ -74,14 +74,14 @@ void handlePointLightsEffects(Ray *r, Vect &P, Object *o, Vect N, vector<double>
             continue;
         for (int c = 0; c < 3; ++c)
         {
-            color[c] += p.color[c] * (o->coEfficients[1] * lambert * baseColor[c]); // Diffuse component
+            color[c] += p->color[c] * (o->coEfficients[1] * lambert * baseColor[c]); // Diffuse component
         }
 
         Vect V = (r->dir * -1.0).normalize();        // View direction
         Vect R = (N * 2 * lambert - LD).normalize(); // Reflection vector
         double spec = pow(max(0.0, R.dot(V)), o->shine);
         for (int c = 0; c < 3; ++c)
-            color[c] += p.color[c] * o->coEfficients[2] * spec;
+            color[c] += p->color[c] * o->coEfficients[2] * spec;
     }
     return;
 }
@@ -92,14 +92,14 @@ void handleSpotLightsEffects(Ray *r, Vect &P, Object *o, Vect N, vector<double> 
 
     for (auto &s : spotLights)
     {
-        Vect LD = (s.pointLight.pos - P).normalize(); // Light direction
-        double theta = acos(LD.dot(s.dir.normalize())) * 180.0 / M_PI;
-        if (theta > s.angle)
+        Vect LD = (s->pointLight.pos - P).normalize(); // Light direction
+        double theta = acos(LD.dot(s->dir.normalize())) * 180.0 / M_PI;
+        if (theta > s->angle)
             continue; // Outside spotlight cone
 
         Ray shadowRay(P + N * EPS, LD);
         bool inShadow = false;
-        double distLight = (s.pointLight.pos - P).magnitude();
+        double distLight = (s->pointLight.pos - P).magnitude();
         for (auto &ob : objects)
         {
             if (ob == o)
@@ -121,7 +121,7 @@ void handleSpotLightsEffects(Ray *r, Vect &P, Object *o, Vect N, vector<double> 
             continue;
         for (int c = 0; c < 3; ++c)
         {
-            color[c] += s.pointLight.color[c] * (o->coEfficients[1] * lambert * baseColor[c]);
+            color[c] += s->pointLight.color[c] * (o->coEfficients[1] * lambert * baseColor[c]);
         }
 
         Vect V = (r->dir * -1.0).normalize();        // View direction
@@ -129,7 +129,7 @@ void handleSpotLightsEffects(Ray *r, Vect &P, Object *o, Vect N, vector<double> 
         double spec = pow(max(0.0, R.dot(V)), o->shine);
         for (int c = 0; c < 3; ++c)
         {
-            color[c] += s.pointLight.color[c] * o->coEfficients[2] * spec;
+            color[c] += s->pointLight.color[c] * o->coEfficients[2] * spec;
         }
     }
     return;

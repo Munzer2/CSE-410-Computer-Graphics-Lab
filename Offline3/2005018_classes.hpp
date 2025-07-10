@@ -15,8 +15,8 @@ class Ray;
 
 // Global containers for scene elements
 extern vector<Object*> objects;
-extern vector<PointLight> pointLights;
-extern vector<SpotLight> spotLights;
+extern vector<PointLight *> pointLights;
+extern vector<SpotLight *> spotLights;
 extern GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
 
 // Base class for all scene objects
