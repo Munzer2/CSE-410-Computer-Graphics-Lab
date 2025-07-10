@@ -14,7 +14,7 @@ Vect up(0, 0, 1); // up vector
 GLint  windH = 600, windW = 600; // window height and width
 GLint imgH = 600, imgW = 600; // image height and width
 GLdouble angleChange = 5.0, camSpeed = 20.0; // angle change for rotation
-GLdouble fovY = 45.0, znear = 1, zfar = 10000.0; // field of view, near and far plane distances
+GLdouble fovY = 60.0 , znear = 1, zfar = 1000.0; // field of view, near and far plane distances
 GLdouble t_min = 1e6; // minimum t value for intersection 
 
 void _init() {
@@ -67,12 +67,16 @@ void _display()
         pointLights[p].draw();
     }
 
+    for(int s = 0 ; s < spotLights.size(); ++s) {
+        spotLights[s].draw();
+    }
+
     glutSwapBuffers();
 }
 
 void loadData() {
     /// read a text file called scene.txt
-    ifstream file("scene_test.txt");
+    ifstream file("scene.txt");
     string line; 
     file >> recurL >> TotPix >> TotObj;
     for(int i = 0; i < TotObj; ++i) {
@@ -159,65 +163,77 @@ void loadData() {
     Floor *floor = new Floor(1000, 20);
     floor->setColor({0.5, 0.5, 0.5}); 
     floor->setShine(10); 
-    floor->setCoefficients({0.1, 0.1, 0.1, 0.1});
+    floor->setCoefficients({0.1, 0.8, 0.0, 0.4});
     objects.push_back(floor); 
+
+    imgH = imgW = TotPix;
+    windW = windH = TotPix;
     return; 
 }
 
 void capture() {
     double planeDist = ((GLdouble)windH / 2.0) / tan(DegToRad(fovY) / 2.0); 
-    double halfH = tan(DegToRad(fovY) / 2.0) * planeDist;
-    double halfW = halfH * ((GLdouble)windW / (GLdouble)windH);
-    // Vect _look = (look + eye).normalize();
-    Vect _look = look.normalize();
+    double halfH = (GLdouble)windH/2.0;
+    double halfW =(GLdouble)windW/2.0;  
+    Vect _look = (look).normalize();
     Vect right = (_look ^ up).normalize();
     Vect topLeft = eye + (_look * planeDist) + (up * halfH) -(right * halfW);
     double du = (2.0 * halfW) / (GLdouble)imgW;
     double dv = (2.0 * halfH) / (GLdouble)imgH;
-    topLeft = topLeft + right * (0.5 * du) - up * (0.5 * dv);
-
-    int nearest; 
-    double t, tMin; 
-    pixels.assign(imgH, vector<unsigned char>(imgW * 3));
+    topLeft = topLeft + (right * 0.5 * du) - (up * 0.5 * dv) ;
+    double tMin, t;
+    bitmap_image image(imgW, imgH);
+    vector< double > col(3); 
     for(int i = 0 ; i < imgW; ++i) {
         for(int j = 0 ; j < imgH; ++j) {
             Vect currPix = topLeft + right * (i * du) - up * (j * dv);
             Vect dir = (currPix - eye).normalize();
-            vector< double > col(3); 
             tMin = DBL_MAX;
-            nearest = -1;
-            Ray r(eye, dir);  
+            int nearest = -1;
+            Ray *r = new Ray(eye, dir);  
             for(int o = 0; o < objects.size(); ++o) {
-                t = objects[o]->intersect(&r , col , 0); 
-                if(t > 0 && t < tMin) {
+                t = objects[o]->intersect(r , col , 0); 
+                if(t > 0 && t < tMin && t < zfar && t > znear) {
                     tMin = t; 
                     nearest = o; 
                 }
             }
             
             if(nearest == -1) { /// black pixel
-                pixels[j][i * 3] = 0; 
-                pixels[j][i * 3 + 1] = 0; 
-                pixels[j][i * 3 + 2] = 0;
+                image.set_pixel(i, j, 0, 0, 0); // Set pixel to black; 
+                delete r; 
                 continue;
             }
-            double t_min = objects[nearest]->intersect(&r , col, 1);
+            objects[nearest]->intersect(r , col, 1);
             // update image pixel
-            pixels[j][i * 3] = (unsigned char)(col[0] * 255);
-            pixels[j][i * 3 + 1] = (unsigned char)(col[1] * 255);
-            pixels[j][i * 3 + 2] = (unsigned char)(col[2] * 255);
+            auto gamma = 1.0/2.2; // Gamma correction value
+            double _r = clamp(col[0], 0.0, 1.0);
+            double _g = clamp(col[1], 0.0, 1.0); 
+            double _b = clamp(col[2], 0.0, 1.0);
+            // image.set_pixel(i, j,
+            //     (unsigned char)(pow(_r, gamma)* 255), // Red channel
+            //     (unsigned char)(pow(_g, gamma)* 255), // Green channel
+            //     (unsigned char)(pow(_b, gamma)* 255)  // Blue channel
+            // );
+            image.set_pixel(i, j,
+                (unsigned char)(_r* 255), // Red channel
+                (unsigned char)(_g* 255), // Green channel
+                (unsigned char)(_b* 255)  // Blue channel
+            );
+            delete r;
+            col[0] = col[1] = col[2] = 0.0; // Reset color for next pixel
         }
     } 
-    bitmap_image image(imgW, imgH);
-    for(int i = 0 ;i < imgH; ++i) {
-        for(int j = 0; j < imgW; ++j) {
-            image.set_pixel(j, i,
-                pixels[i][j * 3], // Red channel
-                pixels[i][j * 3 + 1], // Green channel
-                pixels[i][j * 3 + 2]      // Blue channel
-            );
-        } 
-    }
+    
+    // for(int i = 0 ;i < imgH; ++i) {
+    //     for(int j = 0; j < imgW; ++j) {
+    //         image.set_pixel(j, i,
+    //             pixels[i][j * 3], // Red channel
+    //             pixels[i][j * 3 + 1], // Green channel
+    //             pixels[i][j * 3 + 2]      // Blue channel
+    //         );
+    //     } 
+    // }
     image.save_image("output_11.bmp");
     return; 
 }
@@ -293,11 +309,11 @@ void _specialKeyboard(int key, int x, int y) {
 
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
+    loadData(); 
     glutInitWindowSize(windW, windH);
     glutInitWindowPosition(100, 100);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutCreateWindow("Ray Tracing");
-    loadData(); 
 
     glutDisplayFunc(_display);
     glutKeyboardFunc(_keyboard);

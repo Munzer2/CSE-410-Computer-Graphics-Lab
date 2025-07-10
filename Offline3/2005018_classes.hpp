@@ -41,7 +41,7 @@ public:
 /// Some helpful functions
 void handleReflection(Ray *r, const Vect & P, Vect & N, vector< double > &color, int lvl, Object * obj);
 void handlePointLightsEffects(Ray *r, Vect &P, Object * o, Vect N, vector<double> &color, vector<double> &baseColor);
-
+void handleSpotLightsEffects(Ray *r, Vect &P, Object * o, Vect N, vector<double> &color, vector<double> &baseColor); 
 // Sphere object
 class Sphere : public Object {
 public:
