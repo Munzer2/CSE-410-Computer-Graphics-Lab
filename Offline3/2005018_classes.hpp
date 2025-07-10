@@ -5,6 +5,7 @@
 #include <GL/glut.h>
 #include "vector.hpp"
 
+
 using namespace std;
 
 // Forward declaration
@@ -18,7 +19,7 @@ extern vector<Object*> objects;
 extern vector<PointLight *> pointLights;
 extern vector<SpotLight *> spotLights;
 extern GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
-
+extern bool checker; // Checkerboard flag
 // Base class for all scene objects
 class Object {
 public:
@@ -76,9 +77,13 @@ public:
 // Checkerboard floor
 class Floor : public Object {
 public:
+    unsigned char *texData = nullptr;
+    int texW = 0, texH = 0, texChannels = 0; 
     Floor(double floorWidth, double tileWidth);
     void draw() override;
     double intersect(Ray* r, vector<double>& color, int lvl) override;
+    void loadTexture(string &fileName);
+    vector< double > sampleTex(double u, double v); 
 };
 
 // Triangle object

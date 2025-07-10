@@ -1,4 +1,6 @@
 #include "2005018_classes.hpp"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 // #include "vector.h"
 
 // Definitions of global containers
@@ -6,6 +8,7 @@ vector<Object *> objects;
 vector<PointLight *> pointLights;
 vector<SpotLight *> spotLights;
 GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
+bool checker = true; 
 
 // General functions
 void handleReflection(Ray *r, const Vect &P, Vect &N, vector<double> &color, int lvl, Object *obj)
@@ -50,7 +53,7 @@ void handlePointLightsEffects(Ray *r, Vect &P, Object *o, Vect N, vector<double>
     for (auto &p : pointLights)
     {
         Vect LD = (p->pos - P).normalize(); // Light direction
-        Ray shadowRay(P + LD * EPS, LD);   /// avoid self-shadowing
+        Ray shadowRay(P + LD * EPS, LD);    /// avoid self-shadowing
 
         bool inShadow = false;
         double distLight = (p->pos - P).magnitude();
@@ -271,6 +274,43 @@ void Floor::draw()
     }
 }
 
+void Floor::loadTexture(string &fileName)
+{
+    texData = stbi_load(fileName.c_str(), &texW, &texH, &texChannels, 0);
+}
+
+vector<double> Floor::sampleTex(double u, double v)
+{
+    if (!texData || texH <= 0 || texW <= 0 || texChannels <= 0)
+        return {0.5, 0.5, 0.5};
+
+    u = clamp(u, 0.0, 1.0);
+    v = clamp(v, 0.0, 1.0);
+    int x = clamp(int(u * (texW - 1)), 0, texW - 1);
+    int y = clamp(int((1 - v) * (texH - 1)), 0, texH - 1);
+    int idx = (y * texW + x) * texChannels;
+    int max_idx = texW * texH * texChannels;
+    if (idx < 0 || idx + 2 >= max_idx)
+        return {1.0, 0.0, 1.0};
+
+    double r = texData[idx] / 255.0, g, b;
+    if (texChannels > 2)
+    {
+        g = texData[idx + 1] / 255.0;
+    }
+    else
+        g = r; // If only 1 channel, use it for all
+
+    if (texChannels >= 3)
+    {
+        b = texData[idx + 2] / 255.0;
+    }
+    else
+        b = r; // If only 1 channel, use it for all
+
+    return {r, g, b};
+}
+
 double Floor::intersect(Ray *r, vector<double> &color, int lvl)
 {
     const double EPS = 1e-6;
@@ -292,9 +332,22 @@ double Floor::intersect(Ray *r, vector<double> &color, int lvl)
     }
 
     Vect N(0, 0, 1);
-    int x = floor((P.x - ref_point.x) / l);
-    int y = floor((P.y - ref_point.y) / l);
-    vector<double> baseColor = ((x + y) % 2 == 0 ? vector<double>{1.0, 1.0, 1.0} : vector<double>{0.0, 0.0, 0.0});
+    vector<double> baseColor = this->color;
+    if (checker)
+    {
+        int x = floor((P.x - ref_point.x) / l);
+        int y = floor((P.y - ref_point.y) / l);
+        baseColor = ((x + y) % 2 == 0 ? vector<double>{1.0, 1.0, 1.0} : vector<double>{0.0, 0.0, 0.0});
+    }
+    else
+    {
+        double floorW = -2 * ref_point.x, tileSize = l;
+        double u_cont = (P.x - (ref_point.x - floorW / 2)) / tileSize;
+        double v_cont = (P.y - (ref_point.y - floorW / 2)) / tileSize;
+        double u = u_cont - floor(u_cont);
+        double v = v_cont - floor(v_cont);
+        baseColor = sampleTex(u, v);
+    }
     for (int c = 0; c < 3; ++c)
     {
         color[c] = baseColor[c] * coEfficients[0]; // Ambient component
@@ -415,16 +468,22 @@ double General::intersect(Ray *r, vector<double> &color, int lvl)
             continue;
         Vect P = O + D * t; // Intersection point
 
-        if(clipLen > 0.0) {
-            if(P.x < clipRef.x || P.x > clipRef.x + clipLen) continue; 
+        if (clipLen > 0.0)
+        {
+            if (P.x < clipRef.x || P.x > clipRef.x + clipLen)
+                continue;
         }
 
-        if(clipWid > 0.0 ) {
-            if(P.y < clipRef.y || P.y > clipRef.y + clipWid) continue;
+        if (clipWid > 0.0)
+        {
+            if (P.y < clipRef.y || P.y > clipRef.y + clipWid)
+                continue;
         }
 
-        if(clipHgt > 0.0) {
-            if(P.z < clipRef.z || P.z > clipRef.z + clipHgt) continue;
+        if (clipHgt > 0.0)
+        {
+            if (P.z < clipRef.z || P.z > clipRef.z + clipHgt)
+                continue;
         }
         t_hit = t;
         break;

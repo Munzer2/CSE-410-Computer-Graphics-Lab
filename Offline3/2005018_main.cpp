@@ -5,17 +5,17 @@
 #include "bitmap_image.hpp"
 using namespace std;
 
-
-vector<vector<unsigned char >> pixels; // global vector to hold pixel data for the image
-
 Vect eye(60, 60, 60); // camera position
 Vect look = Vect(-eye.x, -eye.y, -eye.z); // look-at point
 Vect up(0, 0, 1); // up vector 
-GLint  windH = 600, windW = 600; // window height and width
-GLint imgH = 600, imgW = 600; // image height and width
-GLdouble angleChange = 5.0, camSpeed = 20.0; // angle change for rotation
-GLdouble fovY = 60.0 , znear = 1, zfar = 1000.0; // field of view, near and far plane distances
-GLdouble t_min = 1e6; // minimum t value for intersection 
+GLint  windH = 600, windW = 600; 
+GLint imgH = 600, imgW = 600; 
+GLdouble angleChange = 5.0, camSpeed = 20.0; 
+GLdouble fovY = 60.0 , znear = 1, zfar = 1000.0; 
+GLdouble t_min = 1e6;  
+int cap_count = 0, tex_ind =1; 
+string assets = "assets/"; 
+vector< string > textureFiles = {"tex1.jpg", "tex2.jpg", "rainbow_checker.png"}; // list of texture files
 
 void _init() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Black background
@@ -74,8 +74,21 @@ void _display()
     glutSwapBuffers();
 }
 
+void loadFloor() {
+    Floor *floor = new Floor(1000, 20);
+    floor->setColor({0.5, 0.5, 0.5}); 
+    floor->setShine(10); 
+    floor->setCoefficients({0.2, 0.7, 0.2, 0.2});
+    string fullPath = assets + textureFiles[tex_ind];
+    floor->loadTexture(fullPath);
+    tex_ind = (tex_ind + 1) % textureFiles.size(); 
+    objects.push_back(floor); 
+    // 0.1, 0.5, 0.0, 0.4
+    return; 
+}
+
+
 void loadData() {
-    /// read a text file called scene.txt
     ifstream file("scene.txt");
     string line; 
     file >> recurL >> TotPix >> TotObj;
@@ -95,7 +108,7 @@ void loadData() {
             int shine;
             file >> shine;
             s->setShine(shine);
-            objects.push_back(s); // add sphere to the objects vector
+            objects.push_back(s); 
         }
         else if(obj == "triangle") {
             Vect v1,v2,v3;
@@ -112,7 +125,7 @@ void loadData() {
             int shine;
             file >> shine; 
             t->setShine(shine);
-            objects.push_back(t); // add triangle to the objects vector
+            objects.push_back(t); 
         }
         else if(obj == "general") {
             double a, b, c, d, e, f, g, h, i, j;
@@ -131,7 +144,7 @@ void loadData() {
             gObj->setColor({color.x, color.y, color.z});
             gObj->setCoefficients(coeff);
             gObj->setShine(shine);
-            objects.push_back(gObj); // add general object to the objects vector
+            objects.push_back(gObj); 
         }
         else {
             cerr << "Unknown object type: " << obj << endl; 
@@ -158,18 +171,13 @@ void loadData() {
         SpotLight *s = new SpotLight(pos, {col.x, col.y, col.z}, dir, angle);
         spotLights.push_back(s); // add spotlight to the spotLights vector
     }
-    file.close(); 
-
-    Floor *floor = new Floor(1000, 20);
-    floor->setColor({0.5, 0.5, 0.5}); 
-    floor->setShine(10); 
-    floor->setCoefficients({0.1, 0.8, 0.0, 0.4});
-    objects.push_back(floor); 
-
+    file.close();  
+    loadFloor();
     imgH = imgW = TotPix;
     windW = windH = TotPix;
     return; 
 }
+
 
 void capture() {
     double planeDist = ((GLdouble)windH / 2.0) / tan(DegToRad(fovY) / 2.0); 
@@ -190,9 +198,9 @@ void capture() {
             Vect dir = (currPix - eye).normalize();
             tMin = DBL_MAX;
             int nearest = -1;
-            Ray *r = new Ray(eye, dir);  
+            Ray r(eye, dir);  
             for(int o = 0; o < objects.size(); ++o) {
-                t = objects[o]->intersect(r , col , 0); 
+                t = objects[o]->intersect(&r , col , 0); 
                 if(t > 0 && t < tMin && t < zfar && t > znear) {
                     tMin = t; 
                     nearest = o; 
@@ -200,41 +208,24 @@ void capture() {
             }
             
             if(nearest == -1) { /// black pixel
-                image.set_pixel(i, j, 0, 0, 0); // Set pixel to black; 
-                delete r; 
+                image.set_pixel(i, j, 0, 0, 0); // Set pixel to black;
                 continue;
             }
-            objects[nearest]->intersect(r , col, 1);
-            // update image pixel
-            auto gamma = 1.0/2.2; // Gamma correction value
+            objects[nearest]->intersect(&r , col, 1);
             double _r = clamp(col[0], 0.0, 1.0);
             double _g = clamp(col[1], 0.0, 1.0); 
             double _b = clamp(col[2], 0.0, 1.0);
-            // image.set_pixel(i, j,
-            //     (unsigned char)(pow(_r, gamma)* 255), // Red channel
-            //     (unsigned char)(pow(_g, gamma)* 255), // Green channel
-            //     (unsigned char)(pow(_b, gamma)* 255)  // Blue channel
-            // );
             image.set_pixel(i, j,
                 (unsigned char)(_r* 255), // Red channel
                 (unsigned char)(_g* 255), // Green channel
                 (unsigned char)(_b* 255)  // Blue channel
             );
-            delete r;
             col[0] = col[1] = col[2] = 0.0; // Reset color for next pixel
         }
     } 
-    
-    // for(int i = 0 ;i < imgH; ++i) {
-    //     for(int j = 0; j < imgW; ++j) {
-    //         image.set_pixel(j, i,
-    //             pixels[i][j * 3], // Red channel
-    //             pixels[i][j * 3 + 1], // Green channel
-    //             pixels[i][j * 3 + 2]      // Blue channel
-    //         );
-    //     } 
-    // }
-    image.save_image("output_11.bmp");
+    cap_count++;
+    image.save_image("output_1" + to_string(cap_count) + ".bmp");
+    cout << "Image saved to output_" << cap_count << ".bmp" << "\n"; 
     return; 
 }
 
@@ -317,6 +308,9 @@ void freeMem() {
 
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
+    if(argc > 1) {
+        checker = (strcmp(argv[1], "1") == 0); 
+    }
     loadData(); 
     glutInitWindowSize(windW, windH);
     glutInitWindowPosition(100, 100);
