@@ -100,7 +100,7 @@ void handleSpotLightsEffects(Ray *r, Vect &P, Object *o, Vect N, vector<double> 
         if (theta > s->angle)
             continue; // Outside spotlight cone
 
-        Ray shadowRay(P + N * EPS, LD);
+        Ray shadowRay(P + LD * EPS, LD);
         bool inShadow = false;
         double distLight = (s->pointLight.pos - P).magnitude();
         for (auto &ob : objects)

@@ -13,9 +13,13 @@ GLint imgH = 600, imgW = 600;
 GLdouble angleChange = 5.0, camSpeed = 20.0; 
 GLdouble fovY = 60.0 , znear = 1, zfar = 1000.0; 
 GLdouble t_min = 1e6;  
-int cap_count = 0, tex_ind =1; 
+int cap_count = 0, tex_ind =3; 
 string assets = "assets/"; 
-vector< string > textureFiles = {"tex1.jpg", "tex2.jpg", "rainbow_checker.png"}; // list of texture files
+vector< string > textureFiles = {"tex1.jpg", "tex2.jpg", "rainbow_checker.png", "tex3.jpg"}; // list of texture files
+
+
+
+
 
 void _init() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Black background
@@ -80,6 +84,7 @@ void loadFloor() {
     floor->setShine(10); 
     floor->setCoefficients({0.2, 0.7, 0.2, 0.2});
     string fullPath = assets + textureFiles[tex_ind];
+    cout << "Loading texture from: " << fullPath << endl;
     floor->loadTexture(fullPath);
     tex_ind = (tex_ind + 1) % textureFiles.size(); 
     objects.push_back(floor); 
