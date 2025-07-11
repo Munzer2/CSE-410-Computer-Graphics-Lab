@@ -15,7 +15,7 @@ GLdouble fovY = 60.0 , znear = 1, zfar = 1000.0;
 GLdouble t_min = 1e6;  
 int cap_count = 0, tex_ind =3; 
 string assets = "assets/"; 
-vector< string > textureFiles = {"tex1.jpg", "tex2.jpg", "rainbow_checker.png", "tex3.jpg"}; // list of texture files
+vector< string > textureFiles = {"tex1.jpg", "tex2.jpg", "rainbow_checker.png", "tex3.jpg", "tex4.jpg"}; // list of texture files
 
 
 
@@ -84,9 +84,7 @@ void loadFloor() {
     floor->setShine(10); 
     floor->setCoefficients({0.2, 0.7, 0.2, 0.2});
     string fullPath = assets + textureFiles[tex_ind];
-    cout << "Loading texture from: " << fullPath << endl;
     floor->loadTexture(fullPath);
-    tex_ind = (tex_ind + 1) % textureFiles.size(); 
     objects.push_back(floor); 
     // 0.1, 0.5, 0.0, 0.4
     return; 
@@ -184,7 +182,20 @@ void loadData() {
 }
 
 
+void changeTextureFloor() {
+    for(Object *obj : objects) {
+        if(auto *floor = dynamic_cast<Floor*>(obj)) {
+            string fullPath = assets + textureFiles[tex_ind];
+            tex_ind = (tex_ind + 1) % textureFiles.size();
+            cout << "Loading texture from: " << fullPath << endl;
+            floor->loadTexture(fullPath);
+            break; 
+        }
+    }
+}
+
 void capture() {
+    changeTextureFloor();
     double planeDist = ((GLdouble)windH / 2.0) / tan(DegToRad(fovY) / 2.0); 
     double halfH = (GLdouble)windH/2.0;
     double halfW =(GLdouble)windW/2.0;  
@@ -228,11 +239,12 @@ void capture() {
             col[0] = col[1] = col[2] = 0.0; // Reset color for next pixel
         }
     } 
-    cap_count++;
+    cap_count++;  
     image.save_image("output_1" + to_string(cap_count) + ".bmp");
-    cout << "Image saved to output_" << cap_count << ".bmp" << "\n"; 
+    cout << "Image saved to output_1" << cap_count << ".bmp" << "\n";
     return; 
 }
+
 
 void _keyboard(unsigned char key, int x, int y) {
     switch(key) {
