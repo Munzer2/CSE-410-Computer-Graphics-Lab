@@ -9,6 +9,7 @@ vector<PointLight *> pointLights;
 vector<SpotLight *> spotLights;
 GLint recurL, TotPix, TotObj, TotPLS, TotSLS;
 bool checker = true; 
+GLdouble PI = acos(-1.0);
 
 // General functions
 void handleReflection(Ray *r, const Vect &P, Vect &N, vector<double> &color, int lvl, Object *obj)
@@ -96,7 +97,7 @@ void handleSpotLightsEffects(Ray *r, Vect &P, Object *o, Vect N, vector<double> 
     for (auto &s : spotLights)
     {
         Vect LD = (s->pointLight.pos - P).normalize(); // Light direction
-        double theta = acos(LD.dot(s->dir.normalize())) * 180.0 / M_PI;
+        double theta = acos(LD.dot(s->dir.normalize())) * 180.0 / PI;
         if (theta > s->angle)
             continue; // Outside spotlight cone
 
