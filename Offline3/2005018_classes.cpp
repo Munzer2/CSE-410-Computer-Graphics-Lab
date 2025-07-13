@@ -121,7 +121,7 @@ void handleSpotLightsEffects(Ray *r, Vect &P, Object *o, Vect N, vector<double> 
 
         double lambert = max(0.0, N.dot(LD)); // Diffuse component
 
-        if (lambert == 0.0 || lambert < EPS)
+        if (lambert == 0.0|| lambert < EPS)
             continue;
         for (int c = 0; c < 3; ++c)
         {
