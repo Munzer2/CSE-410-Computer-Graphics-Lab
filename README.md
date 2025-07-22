@@ -57,7 +57,7 @@ Implement stages of the classic software rasterizer. :contentReference[oaicite:5
 
 ## Lab 3: Ray Tracing (Offline3)
 
-Build a basic ray tracer with shading, shadows, and reflections. :contentReference[oaicite:6]{index=6}
+Build a basic ray tracer with shading, shadows, and reflections.
 
 - **Scene Parsing** (`scene.txt`, `scene_test.txt`)  
   – Read recursion depth, image size, object/light lists.  
