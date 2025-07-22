@@ -17,24 +17,18 @@ Systematic implementations of core computer-graphics concepts across three offli
 
 ## Lab 1: OpenGL Basics (Offline1)
 
-Basic GLUT demonstrations and interactive 3D exercises. :contentReference[oaicite:4]{index=4}
+Basic GLUT demonstrations and interactive 3D exercises.
 
 - **Bouncing Ball** (`2005018_Ball.cpp`)  
   – Simulate a sphere bouncing in a 3D box under gravity, with realistic collisions and camera controls.  
 - **Analog Clock** (`2005018_Clock.cpp`)  
   – Draw a real-time, anti-aliased clock face with hour, minute, second hands; demonstrate 2D primitives and timer callbacks.  
-- **Pendulum & 3D Axes** (`Online3D.cpp`)  
-  – Render a simple pendulum and world axes; explore 3D transformations and camera navigation.  
-- **Interactive Practicals** (`onlinePrac.cpp`, `onlinePrac2.cpp`, `onlinePrac3.cpp`)  
-  – Various small demos reinforcing keyboard/mouse interaction, viewing transformations, and animation loops.  
-- **Templates** (`templates/main.cpp`, `templates/main_3D.cpp`)  
-  – Starter code for 2D/3D GLUT programs.  
 
 ---
 
 ## Lab 2: Rasterization Pipeline (Offline2)
 
-Implement stages of the classic software rasterizer. :contentReference[oaicite:5]{index=5}
+Implement stages of the classic software rasterizer.
 
 1. **Stage 1 – Coordinate Transformation & Clipping**  
    - Read scene configuration, apply model/view/projection transforms.  
@@ -89,5 +83,4 @@ g++ Offline1/2005018_Ball.cpp -o BallDemo -lglut -lGLU -lGL
 g++ Offline2/image_drawing.cpp Offline2/Parser.h Offline2/Matrix.h -o Rasterizer
 
 # Lab 3 ray tracer:
-g++ Offline3/2005018_main.cpp Offline3/2005018_classes.cpp \
-    -o RayTracer -lglut -lGLU -lGL -IOffline3
+g++ Offline3/2005018_main.cpp Offline3/2005018_classes.cpp Offline3/vector.hpp -o RayTracer -lglut -lGLU -lGL
