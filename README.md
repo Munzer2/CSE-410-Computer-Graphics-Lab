@@ -9,7 +9,7 @@ Systematic implementations of core computer-graphics concepts across three offli
 1. [Lab 1: OpenGL Basics (Offline1)](#lab-1-opengl-basics-offline1)  
 2. [Lab 2: Rasterization Pipeline (Offline2)](#lab-2-rasterization-pipeline-offline2)  
 3. [Lab 3: Ray Tracing (Offline3)](#lab-3-ray-tracing-offline3)  
-4. [Setup & Build](#setup--build)  
+4. [Setup & Build](#setup-&-build)  
 5. [Usage](#usage)  
 
 ---
