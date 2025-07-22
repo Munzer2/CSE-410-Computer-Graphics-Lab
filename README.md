@@ -11,7 +11,6 @@ Systematic implementations of core computer-graphics concepts across three offli
 3. [Lab 3: Ray Tracing (Offline3)](#lab-3-ray-tracing-offline3)  
 4. [Setup & Build](#setup--build)  
 5. [Usage](#usage)  
-6. [Directory Structure](#directory-structure)  
 
 ---
 
