@@ -87,5 +87,9 @@ g++ 2005018_Ball.cpp -o demo -lglut -lGLU -lGL
 g++ .\main.cpp -o Raster
 ./Raster
 
-# Lab 3 ray tracer:
+# Lab 3 ray tracing:
+#linux
 g++ Offline3/2005018_main.cpp Offline3/2005018_classes.cpp Offline3/vector.hpp -o RayTracer -lglut -lGLU -lGL
+
+# windows
+g++ .\2005018_main.cpp .\2005018_classes.cpp .\vector.cpp -o main -lfreeglut -lglu32 -lopengl32 -lgdi32
