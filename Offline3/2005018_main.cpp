@@ -10,7 +10,7 @@ Vect look = Vect(-eye.x, -eye.y, -eye.z); // look-at point
 Vect up(0, 0, 1); // up vector 
 GLint  windH = 600, windW = 600; 
 GLint imgH = 600, imgW = 600; 
-GLdouble angleChange = 5.0, camSpeed = 20.0; 
+GLdouble angleChange = 2.0, camSpeed = 5.0; 
 GLdouble fovY = 60.0 , znear = 1, zfar = 1000.0; 
 GLdouble t_min = 1e6;  
 int cap_count = 0, tex_ind =3; 
@@ -177,7 +177,7 @@ void loadData() {
     file.close();  
     loadFloor();
     imgH = imgW = TotPix;
-    windW = windH = TotPix;
+    windW = windH = 768;
     return; 
 }
 
@@ -329,7 +329,7 @@ int main(int argc, char** argv) {
         checker = (strcmp(argv[1], "1") == 0); 
     }
     loadData(); 
-    glutInitWindowSize(windW, windH);
+    glutInitWindowSize(windH, windW);
     glutInitWindowPosition(100, 100);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutCreateWindow("Ray Tracing");
