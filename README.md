@@ -84,7 +84,8 @@ g++ 2005018_Ball.cpp -o main -lopengl32 -lglu32 -lfreeglut
 g++ 2005018_Ball.cpp -o demo -lglut -lGLU -lGL
 
 # Lab 2 rasterizer:
-g++ Offline2/image_drawing.cpp Offline2/Parser.h Offline2/Matrix.h -o Rasterizer
+g++ .\main.cpp -o Raster
+./Raster
 
 # Lab 3 ray tracer:
 g++ Offline3/2005018_main.cpp Offline3/2005018_classes.cpp Offline3/vector.hpp -o RayTracer -lglut -lGLU -lGL
