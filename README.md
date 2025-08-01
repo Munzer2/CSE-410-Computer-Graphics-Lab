@@ -80,7 +80,7 @@ sudo apt install build-essential freeglut3-dev libglu1-mesa-dev libglew-dev
 # Lab 1 examples: (On windows)
 g++ 2005018_Ball.cpp -o main -lopengl32 -lglu32 -lfreeglut
 
-# Then run the following :
+# On linux :
 g++ 2005018_Ball.cpp -o demo -lglut -lGLU -lGL
 
 # Lab 2 rasterizer:
