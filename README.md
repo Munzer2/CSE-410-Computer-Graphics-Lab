@@ -1,5 +1,3 @@
-# CSE-410 Computer Graphics Lab
-
 Systematic implementations of core computer-graphics concepts across three offline labs.
 
 ---
@@ -74,8 +72,16 @@ Build a basic ray tracer with shading, shadows, and reflections.
 _All labs require a GLUT/OpenGL development environment._
 
 ```bash
-# Lab 1 examples:
-g++ Offline1/2005018_Ball.cpp -o BallDemo -lglut -lGLU -lGL
+
+# (On linux for setup) :
+sudo apt update
+sudo apt install build-essential freeglut3-dev libglu1-mesa-dev libglew-dev 
+
+# Lab 1 examples: (On windows)
+g++ 2005018_Ball.cpp -o main -lopengl32 -lglu32 -lfreeglut
+
+# On linux :
+g++ 2005018_Ball.cpp -o demo -lglut -lGLU -lGL
 
 # Lab 2 rasterizer:
 g++ Offline2/image_drawing.cpp Offline2/Parser.h Offline2/Matrix.h -o Rasterizer
