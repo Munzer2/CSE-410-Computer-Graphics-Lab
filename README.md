@@ -1,5 +1,3 @@
-<img width="945" height="435" alt="image" src="https://github.com/user-attachments/assets/cb0ed556-d7fc-49ee-a251-361f784cb3b4" /># CSE-410 Computer Graphics Lab
-
 Systematic implementations of core computer-graphics concepts across three offline labs.
 
 ---
