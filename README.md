@@ -1,7 +1,3 @@
-Systematic implementations of core computer-graphics concepts across three offline labs.
-
----
-
 ## 🧭 Contents
 
 1. [Lab 1: OpenGL Basics (Offline1)](#lab-1-opengl-basics-offline1)  
